@@ -21,7 +21,7 @@ from ppcls.utils.misc import AverageMeter
 def update_metric(trainer, out, batch, batch_size):
     # calc metric
     if trainer.train_metric_func is not None:
-        metric_dict = trainer.train_metric_func(out, batch[-1])
+        metric_dict = trainer.train_metric_func(out, batch)
         for key in metric_dict:
             if key not in trainer.output_info:
                 trainer.output_info[key] = AverageMeter(key, '7.5f')
@@ -43,15 +43,15 @@ def log_info(trainer, batch_size, epoch_id, iter_id):
         for i, lr in enumerate(trainer.lr_sch)
     ])
     metric_msg = ", ".join([
-        "{}: {:.5f}".format(key, trainer.output_info[key].avg)
+        "{}: {:.3f}".format(key, trainer.output_info[key].avg)
         for key in trainer.output_info
     ])
     time_msg = "s, ".join([
-        "{}: {:.5f}".format(key, trainer.time_info[key].avg)
+        "{}: {:.3f}".format(key, trainer.time_info[key].avg)
         for key in trainer.time_info
     ])
 
-    ips_msg = "ips: {:.5f} samples/s".format(
+    ips_msg = "ips: {:.3f} samples/s".format(
         batch_size / trainer.time_info["batch_cost"].avg)
     eta_sec = (
         (trainer.config["Global"]["epochs"] - epoch_id + 1

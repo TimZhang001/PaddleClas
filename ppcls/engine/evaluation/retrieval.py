@@ -122,7 +122,7 @@ def retrieval_eval(engine, epoch_id=0):
     for key in metric_dict:
         if metric_key is None:
             metric_key = key
-        metric_info_list.append("{}: {:.5f}".format(key, metric_dict[key]))
+        metric_info_list.append("{}: {:.3f}".format(key, metric_dict[key]))
     metric_msg = ", ".join(metric_info_list)
     logger.info("[Eval][Epoch {}][Avg]{}".format(epoch_id, metric_msg))
 

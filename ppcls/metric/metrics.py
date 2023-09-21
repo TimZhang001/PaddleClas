@@ -49,6 +49,7 @@ class TopkAcc(AvgMetrics):
         if isinstance(x, dict):
             x = x["logits"]
 
+        label       = label[-1]
         output_dims = x.shape[-1]
 
         metric_dict = dict()
@@ -66,6 +67,44 @@ class TopkAcc(AvgMetrics):
 
         return metric_dict
 
+
+class TopkAccTim(AvgMetrics):
+    def __init__(self, topk=(1, 5)):
+        super().__init__()
+        assert isinstance(topk, (int, list, tuple))
+        if isinstance(topk, int):
+            topk = [topk]
+        self.topk = topk
+        self.reset()
+
+    def reset(self):
+        self.avg_meters = {
+            f"top{k}": AverageMeter(f"top{k}")
+            for k in self.topk
+        }
+
+    def forward(self, x, label):
+        if isinstance(x, dict):
+            x = x["logits"]
+
+        x      = x[0] 
+        label  = label[0]
+        output_dims = x.shape[-1]
+
+        metric_dict = dict()
+        for idx, k in enumerate(self.topk):
+            if output_dims < k:
+                msg = f"The output dims({output_dims}) is less than k({k}), and the argument {k} of Topk has been removed."
+                logger.warning(msg)
+                self.avg_meters.pop(f"top{k}")
+                continue
+            metric_dict[f"top{k}"] = paddle.metric.accuracy(x, label, k=k)
+            self.avg_meters[f"top{k}"].update(metric_dict[f"top{k}"],
+                                              x.shape[0])
+
+        self.topk = list(filter(lambda k: k <= output_dims, self.topk))
+
+        return metric_dict
 
 class mAP(nn.Layer):
     def __init__(self, descending=True):
@@ -204,7 +243,7 @@ class TprAtFpr(nn.Layer):
                 gt_pos_score_list > threshold) / len(gt_pos_score_list)
             if len(gt_neg_score_list) == 0 and tpr > max_tpr:
                 max_tpr = tpr
-                result = "threshold: {}, fpr: 0.0, tpr: {:.5f}".format(
+                result = "threshold: {}, fpr: 0.0, tpr: {:.3f}".format(
                     threshold, tpr)
                 msg = f"The number of negative samples is 0, please add negative samples."
                 logger.warning(msg)
@@ -212,7 +251,7 @@ class TprAtFpr(nn.Layer):
                 gt_neg_score_list > threshold) / len(gt_neg_score_list)
             if fpr <= self.max_fpr and tpr > max_tpr:
                 max_tpr = tpr
-                result = "threshold: {}, fpr: {}, tpr: {:.5f}".format(
+                result = "threshold: {}, fpr: {}, tpr: {:.3f}".format(
                     threshold, fpr, tpr)
         self.max_tpr = max_tpr
         return result

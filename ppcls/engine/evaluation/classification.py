@@ -28,9 +28,9 @@ def classification_eval(engine, epoch_id=0):
     output_info = dict()
     time_info = {
         "batch_cost": AverageMeter(
-            "batch_cost", '.5f', postfix=" s,"),
+            "batch_cost", '.3f', postfix=" s,"),
         "reader_cost": AverageMeter(
-            "reader_cost", ".5f", postfix=" s,"),
+            "reader_cost", ".3f", postfix=" s,"),
     }
     print_batch_step = engine.config["Global"]["print_batch_step"]
 
@@ -112,8 +112,8 @@ def classification_eval(engine, epoch_id=0):
                                 accum_samples]
                 current_samples = total_samples + current_samples - accum_samples
         else:
-            labels = batch[1]
-            preds = out
+            labels = batch[1:]
+            preds  = out
 
         # calc loss
         if engine.eval_loss_func is not None:
@@ -139,18 +139,18 @@ def classification_eval(engine, epoch_id=0):
 
         if iter_id % print_batch_step == 0:
             time_msg = "s, ".join([
-                "{}: {:.5f}".format(key, time_info[key].avg)
+                "{}: {:.3f}".format(key, time_info[key].avg)
                 for key in time_info
             ])
 
-            ips_msg = "ips: {:.5f} images/sec".format(
+            ips_msg = "ips: {:.3f} images/sec".format(
                 batch_size / time_info["batch_cost"].avg)
 
             if "ATTRMetric" in engine.config["Metric"]["Eval"][0]:
                 metric_msg = ""
             else:
                 metric_msg = ", ".join([
-                    "{}: {:.5f}".format(key, output_info[key].val)
+                    "{}: {:.3f}".format(key, output_info[key].val)
                     for key in output_info
                 ])
                 metric_msg += ", {}".format(engine.eval_metric_func.avg_info)
@@ -164,7 +164,7 @@ def classification_eval(engine, epoch_id=0):
 
     if "ATTRMetric" in engine.config["Metric"]["Eval"][0]:
         metric_msg = ", ".join([
-            "evalres: ma: {:.5f} label_f1: {:.5f} label_pos_recall: {:.5f} label_neg_recall: {:.5f} instance_f1: {:.5f} instance_acc: {:.5f} instance_prec: {:.5f} instance_recall: {:.5f}".
+            "evalres: ma: {:.3f} label_f1: {:.3f} label_pos_recall: {:.3f} label_neg_recall: {:.3f} instance_f1: {:.3f} instance_acc: {:.3f} instance_prec: {:.3f} instance_recall: {:.3f}".
             format(*engine.eval_metric_func.attr_res())
         ])
         logger.info("[Eval][Epoch {}][Avg]{}".format(epoch_id, metric_msg))
@@ -176,7 +176,7 @@ def classification_eval(engine, epoch_id=0):
         return engine.eval_metric_func.attr_res()[0]
     else:
         metric_msg = ", ".join([
-            "{}: {:.5f}".format(key, output_info[key].avg)
+            "{}: {:.3f}".format(key, output_info[key].avg)
             for key in output_info
         ])
         metric_msg += ", {}".format(engine.eval_metric_func.avg_info)

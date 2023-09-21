@@ -331,9 +331,9 @@ class Engine(object):
         self.output_info = dict()
         self.time_info = {
             "batch_cost": AverageMeter(
-                "batch_cost", '.5f', postfix=" s,"),
+                "batch_cost", '.3f', postfix=" s,"),
             "reader_cost": AverageMeter(
-                "reader_cost", ".5f", postfix=" s,"),
+                "reader_cost", ".3f", postfix=" s,"),
         }
         # global iter counter
         self.global_step = 0

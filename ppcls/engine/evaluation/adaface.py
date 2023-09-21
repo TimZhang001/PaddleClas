@@ -40,9 +40,9 @@ def adaface_eval(engine, epoch_id=0):
     output_info = dict()
     time_info = {
         "batch_cost": AverageMeter(
-            "batch_cost", '.5f', postfix=" s,"),
+            "batch_cost", '.3f', postfix=" s,"),
         "reader_cost": AverageMeter(
-            "reader_cost", ".5f", postfix=" s,"),
+            "reader_cost", ".3f", postfix=" s,"),
     }
     print_batch_step = engine.config["Global"]["print_batch_step"]
 
@@ -83,15 +83,15 @@ def adaface_eval(engine, epoch_id=0):
         time_info["batch_cost"].update(time.time() - tic)
         if iter_id % print_batch_step == 0:
             time_msg = "s, ".join([
-                "{}: {:.5f}".format(key, time_info[key].avg)
+                "{}: {:.3f}".format(key, time_info[key].avg)
                 for key in time_info
             ])
 
-            ips_msg = "ips: {:.5f} images/sec".format(
+            ips_msg = "ips: {:.3f} images/sec".format(
                 batch_size / time_info["batch_cost"].avg)
 
             metric_msg = ", ".join([
-                "{}: {:.5f}".format(key, output_info[key].val)
+                "{}: {:.3f}".format(key, output_info[key].val)
                 for key in output_info
             ])
             logger.info("[Eval][Epoch {}][Iter: {}/{}]{}, {}, {}".format(
@@ -114,10 +114,10 @@ def adaface_eval(engine, epoch_id=0):
                              all_target_tensor, all_dataname_tensor)
 
     metric_msg = ", ".join([
-        "{}: {:.5f}".format(key, output_info[key].avg) for key in output_info
+        "{}: {:.3f}".format(key, output_info[key].avg) for key in output_info
     ])
     face_msg = ", ".join([
-        "{}: {:.5f}".format(key, eval_result[key])
+        "{}: {:.3f}".format(key, eval_result[key])
         for key in eval_result.keys()
     ])
     logger.info("[Eval][Epoch {}][Avg]{}".format(epoch_id, metric_msg + ", " +

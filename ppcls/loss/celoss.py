@@ -44,6 +44,13 @@ class CELoss(nn.Layer):
     def forward(self, x, label):
         if isinstance(x, dict):
             x = x["logits"]
+
+        if isinstance(label, list) and len(label) > 1:
+            label = label[0]
+        
+        if isinstance(x, list) and len(x) > 1:
+            x = x[0]
+        
         if self.epsilon is not None:
             class_num = x.shape[-1]
             label = self._labelsmoothing(label, class_num)

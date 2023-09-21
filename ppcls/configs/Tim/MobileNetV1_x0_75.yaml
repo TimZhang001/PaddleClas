@@ -7,7 +7,7 @@ Global:
   save_interval: 1
   eval_during_train: True
   eval_interval: 1
-  epochs: 20
+  epochs: 120
   print_batch_step: 10
   use_visualdl: False
   # used for static mode and model export
@@ -16,8 +16,8 @@ Global:
 
 # model architecture
 Arch:
-  name: ShuffleNetV2_x0_25
-  class_num: 102
+  name: MobileNetV1_x0_75
+  class_num: 12
  
 # loss function config for traing/eval process
 Loss:
@@ -33,12 +33,13 @@ Optimizer:
   name: Momentum
   momentum: 0.9
   lr:
-    name: Cosine
-    learning_rate: 0.0125
-    warmup_epoch: 5
+    name: Piecewise
+    learning_rate: 0.01
+    decay_epochs: [30, 60, 90]
+    values: [0.1, 0.01, 0.001, 0.0001]
   regularizer:
     name: 'L2'
-    coeff: 0.00001
+    coeff: 0.00003
 
 
 # data loader for train and eval
@@ -46,8 +47,8 @@ DataLoader:
   Train:
     dataset:
       name: ImageNetDataset
-      image_root: ./dataset/flowers102/
-      cls_label_path: ./dataset/flowers102/train_list.txt
+      image_root: ./dataset/ILSVRC2012/
+      cls_label_path: ./dataset/ILSVRC2012/train_list.txt
       transform_ops:
         - DecodeImage:
             to_rgb: True
@@ -64,7 +65,7 @@ DataLoader:
 
     sampler:
       name: DistributedBatchSampler
-      batch_size: 256
+      batch_size: 64
       drop_last: False
       shuffle: True
     loader:
@@ -74,8 +75,8 @@ DataLoader:
   Eval:
     dataset: 
       name: ImageNetDataset
-      image_root: ./dataset/flowers102/
-      cls_label_path: ./dataset/flowers102/val_list.txt
+      image_root: ./dataset/ILSVRC2012/
+      cls_label_path: ./dataset/ILSVRC2012/val_list.txt
       transform_ops:
         - DecodeImage:
             to_rgb: True
@@ -118,7 +119,7 @@ Infer:
   PostProcess:
     name: Topk
     topk: 5
-    class_id_map_file: ./dataset/flowers102/flowers102_label_list.txt
+    class_id_map_file: ppcls/utils/imagenet1k_label_list.txt
 
 Metric:
   Train:

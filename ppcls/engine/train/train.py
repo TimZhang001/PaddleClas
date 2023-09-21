@@ -51,7 +51,10 @@ def train_epoch(engine, epoch_id, print_batch_step):
                 loss_dict = engine.train_loss_func(out, batch[1])
         else:
             out = forward(engine, batch)
-            loss_dict = engine.train_loss_func(out, batch[1])
+            if len(out) == 2:
+                loss_dict = engine.train_loss_func(out, batch[1:])
+            else:
+                loss_dict = engine.train_loss_func(out, batch[1])
 
         # loss
         loss = loss_dict["loss"] / engine.update_freq
@@ -83,7 +86,7 @@ def train_epoch(engine, epoch_id, print_batch_step):
 
         # below code just for logging
         # update metric_for_logger
-        update_metric(engine, out, batch, batch_size)
+        update_metric(engine, out, batch[1:], batch_size)
         # update_loss_for_logger
         update_loss(engine, loss_dict, batch_size)
         engine.time_info["batch_cost"].update(time.time() - tic)
@@ -102,3 +105,4 @@ def forward(engine, batch):
         return engine.model(batch[0])
     else:
         return engine.model(batch[0], batch[1])
+    

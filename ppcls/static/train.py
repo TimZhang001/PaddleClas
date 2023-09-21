@@ -186,7 +186,7 @@ def main(args):
                                    config)
             if top1_acc > best_top1_acc:
                 best_top1_acc = top1_acc
-                message = "The best top1 acc {:.5f}, in epoch: {:d}".format(
+                message = "The best top1 acc {:.3f}, in epoch: {:d}".format(
                     best_top1_acc, epoch_id)
                 logger.info(message)
                 if epoch_id % global_config["save_interval"] == 0:
