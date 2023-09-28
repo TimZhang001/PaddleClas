@@ -9,28 +9,27 @@ import json
 from scipy.ndimage.morphology import distance_transform_edt
 import paddle.nn.functional as F
 
-CLASS_NAMES_HUCAN = ['00_OK', '01_Shuangbao', '02_Modian', '03_Mark', '04_Tuoluo', '05_Kongdong', \
-                     '06_Cuoceng-', '07_Ring-', '08_Zhenheng-', '09_Ganke-', '10_Dianjiyichang', '11_Huashang']
-
-CLASS_NAMES = CLASS_NAMES_HUCAN # CLASS_NAMES_PRETRAINE
+CLASS_NAMES_B11 = ['00_BgImage', '00_Crack', '01_Broken', '02_Bur', '03_Dirty'] # 'all'
+CLASS_NAMES_LED = ['00_OK', '01_Mark', '02_Dianjiyichang', '03_Cuoceng', '04_Shuangbao']
+CLASS_NAMES = CLASS_NAMES_LED # CLASS_NAMES_PRETRAINE
 
 interpolationList = {
-                "nearest":  cv2.INTER_NEAREST,
+                "nearest": cv2.INTER_NEAREST,
                 "bilinear": cv2.INTER_LINEAR,
-                "bicubic":  cv2.INTER_CUBIC,
-                "area":     cv2.INTER_AREA,
-                "lanczos":  cv2.INTER_LANCZOS4}
+                "bicubic": cv2.INTER_CUBIC,
+                "area": cv2.INTER_AREA,
+                "lanczos": cv2.INTER_LANCZOS4}
 
 def preprocess_mask(img):
     mask             = np.zeros_like(img)
-    mask[img >= 0.1] = 1
+    mask[img >= 1]   = 1
     
     # w * h -> w * h * c
     mask = mask.reshape((mask.shape[0], mask.shape[1], 1));
 
     return mask
 
-class MVTecDataset2(Dataset):
+class MVTecDataset(Dataset):
     def __init__(self, 
                  dataset_path='D:/dataset/mvtec_anomaly_detection', 
                  kind= 'train',
@@ -41,37 +40,20 @@ class MVTecDataset2(Dataset):
                  aug_flip        = False,
                  aug_rotate90    = False,
                  aug_scaleRotate = False,
-                 aug_rotate      = False,
                  aug_brightness_contrast = False,):
         
         self.dataset_path = dataset_path
         self.kind         = kind
-        self.size         = size
         self.down_factor  = down_factor
 
         # load dataset -------------------------------------------------------------
         self.x, self.class_id, self.is_segment, self.mask = self.load_dataset_folder()
-
-        # 根据 class_id 确定一共有多少个类别，确定每个类别的数量和比例
-        
-        # 确定有多少个类别
-        self.num_classes = 14 #len(set(self.class_id))
-
-        # 确定每个类别的数量
-        self.num_samples = len(self.x)
-        self.num_samples_per_class = [0] * self.num_classes
-        for i in range(self.num_samples):
-            self.num_samples_per_class[self.class_id[i]] += 1
-        
-        # 打印每个类别的数量
-        print("num_samples_per_class, in", kind, self.num_samples_per_class)
            
         # preprocess   -------------------------------------------------------------
         size      = None if size is not None and size<=0 else size
         self.size = size
         if self.size is not None:
             self.interpolation  = interpolationList[interpolation]
-            #self.image_rescaler = albumentations.SmallestMaxSize(max_size=self.size, interpolation=self.interpolation)
             self.image_rescaler = albumentations.Resize( height=self.size, width = self.size)
             self.center_crop    = not random_crop
             if self.center_crop:
@@ -106,25 +88,13 @@ class MVTecDataset2(Dataset):
         else:
             self.aug_brightness_contrast = None
 
-        # auidmentation image rotate [-10, 10]
-        if aug_rotate:
-            if kind == 'train':
-                self.aug_rotate = albumentations.SafeRotate(limit=15, p=0.5)
-            else:
-                self.aug_rotate = albumentations.SafeRotate(limit=5, p=0.5)
-        else:
-            self.aug_rotate = None
-
-
     def __getitem__(self, idx):
         xpath, class_id, is_segment, mask = self.x[idx], self.class_id[idx], self.is_segment[idx], self.mask[idx]
         
         if(class_id == 0 or not os.path.isfile(mask)):
-            # good or json mask is not exist
             x,   mask   = self.sample_process_0(image=xpath)
             mask_weight = np.ones_like(mask)
         else:
-            # bad and json mask is exist
             x, mask     = self.sample_process(image=xpath, mask=mask)
             mask_weight = self.distance_transform(mask, 1, 2)
             
@@ -146,22 +116,10 @@ class MVTecDataset2(Dataset):
         example["mask_weight"]  = mask_weight
         example["image_path"]   = xpath
 
-        #return example
         return example["image"], example["class_label"], example["is_segment"], example["segmentation"], example["mask_weight"], example["image_path"]
 
     def __len__(self):
         return len(self.x)
-    
-    def get_user_class_names(self, subdirname):
-        class_label = None
-        
-        # 根据文件名判断文件的类别
-        if subdirname in CLASS_NAMES :
-            class_label = CLASS_NAMES.index(subdirname)
-        else:
-            assert False, "Unknown class name"
-
-        return class_label
         
     def load_dataset_folder(self):
         
@@ -185,8 +143,13 @@ class MVTecDataset2(Dataset):
             subdirname = os.path.basename(subdir)
             
             # 根据文件名判断文件的类别
-            class_label = self.get_user_class_names(subdirname)
-                        
+            if subdirname in CLASS_NAMES :
+                class_label =  CLASS_NAMES.index(subdirname)
+                if class_label != 0:
+                    class_label = 1
+            else:
+                assert False, "Unknown class name"
+            
             # class_label 复制到和image_files一个维度
             class_label = [class_label] * len(image_files)
             
@@ -212,12 +175,10 @@ class MVTecDataset2(Dataset):
         image = Image.open(image).convert('L')
         image = np.array(image).astype(np.uint8)
 
-        # 对输入的图像进行水平方向的拆分[h, w, 1] --> [h, w/3, 3]
-        image1 = image[:, 0:image.shape[1]//3]
-        image2 = image[:, image.shape[1]//3:image.shape[1]//3*2]
-        image3 = image[:, image.shape[1]//3*2:image.shape[1]]
-        image  = np.stack((image1, image2, image3), axis=2)
-
+        # 如果维度不是3，就增加一个维度
+        if len(image.shape) != 3:
+            image = np.expand_dims(image, axis=2)
+        
         # resize
         if self.size is not None:
             image = self.image_rescaler(image=image)["image"]
@@ -225,6 +186,11 @@ class MVTecDataset2(Dataset):
         # cropper    
         if self.size is not None:
             image = self.cropper(image=image)["image"]
+
+        if self.size is not None:
+            mask = np.zeros([self.size, self.size, 1], dtype=np.float32)
+        else:
+            mask = np.zeros([image.shape[0], image.shape[1], 1], dtype=np.float32)
         
         # aug_flip
         if self.aug_flip is not None:
@@ -238,10 +204,6 @@ class MVTecDataset2(Dataset):
         if self.aug_scaleRotate is not None:
             image = self.aug_scaleRotate(image = image)['image']
         
-        # aug_rotate
-        if self.aug_rotate is not None:
-            image = self.aug_rotate(image = image)['image']
-        
         # aug_brightness_contrast
         if self.aug_brightness_contrast is not None:
             image = self.aug_brightness_contrast(image = image)['image']
@@ -249,7 +211,6 @@ class MVTecDataset2(Dataset):
         # to [-1, 1]
         image = image.astype(np.float32)
         image = (image/255).astype(np.float32)
-        mask  = np.zeros([image.shape[0], image.shape[1], 1], dtype=np.float32)
         
         return image, mask
     
@@ -257,11 +218,9 @@ class MVTecDataset2(Dataset):
         image = Image.open(image).convert('L')
         image = np.array(image).astype(np.uint8)
 
-        # 对输入的图像进行水平方向的拆分[h, w, 1] --> [h, w/3, 3]
-        image1 = image[:, 0:image.shape[1]//3]
-        image2 = image[:, image.shape[1]//3:image.shape[1]//3*2]
-        image3 = image[:, image.shape[1]//3*2:image.shape[1]]
-        image  = np.stack((image1, image2, image3), axis=2)
+        # 如果维度不是3，就增加一个维度
+        if len(image.shape) != 3:
+            image = np.expand_dims(image, axis=2)
 
         mask  = self.read_json_resize(mask, [self.size, self.size], False)
         mask  = np.array(mask).astype(np.float32)
@@ -293,12 +252,6 @@ class MVTecDataset2(Dataset):
         # aug_scaleRotate
         if self.aug_scaleRotate is not None:
             processed = self.aug_scaleRotate(image = image, mask=mask)
-            image     = processed["image"]
-            mask      = processed["mask"]
-
-        # aug_rotate
-        if self.aug_rotate is not None:
-            processed = self.aug_rotate(image = image, mask=mask)
             image     = processed["image"]
             mask      = processed["mask"]
         
@@ -333,21 +286,10 @@ class MVTecDataset2(Dataset):
             points = shape['points']
             points = np.array(points, np.int32)
             points = points.reshape((-1, 1, 2))
-            cv2.fillPoly(image, [points], color=255)  # 将形状区域填充为255
+            cv2.fillPoly(image, [points], color=255)  # 将形状区域填充为黑色
 
         if dilate is not None and dilate > 1:
             image = cv2.dilate(image, np.ones((dilate, dilate)))
-        
-        
-        # 对输入的图像进行水平方向的拆分[h, w, 1] --> [h, w/3, 3]
-        image1 = image[:, 0:image.shape[1]//3]
-        image2 = image[:, image.shape[1]//3:image.shape[1]//3*2]
-        image3 = image[:, image.shape[1]//3*2:image.shape[1]]
-        image  = np.stack((image1, image2, image3), axis=2)
-        
-        # rgb->gray
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        
         if resize_dim is not None:
             image = cv2.resize(image, dsize=resize_dim)
         
@@ -379,9 +321,8 @@ class MVTecDataset2(Dataset):
 
 
         return dst_trf
-    
 
-    def downsize(self, image: np.ndarray, downsize_factor: int = 4) -> np.ndarray:
+    def downsize(self, image: np.ndarray, downsize_factor: int = 2) -> np.ndarray:
         img_t    = paddle.to_tensor(np.expand_dims(image, 0 if len(image.shape) == 3 else (0, 1)).astype(np.float32))
         
         # b h w c -> b c h w

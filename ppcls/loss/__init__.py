@@ -96,13 +96,14 @@ class CombinedLossTim(nn.Layer):
         assert len(self.loss_func) == 2, "only support 2 loss(cls + seg)"
         assert len(input) == 2,          "only support 2 input(cls + seg)"
         
-        gt_label    = batch[0]
-        is_segment  = batch[1]
-        gt_mask     = batch[2]
+        gt_label       = batch[0]
+        is_segment     = batch[1]
+        gt_mask        = batch[2]
+        gt_mask_weight = batch[3]
         
         # ----------------------------------------------------
         loss_cls    = self.loss_func[0](input[0], gt_label)
-        loss1       = {key: loss_cls[key] * 0.5 for key in loss_cls}
+        loss1       = {key: loss_cls[key] * 0.25 for key in loss_cls}
         loss_dict.update(loss1)
 
         # ----------------------------------------------------
@@ -110,8 +111,8 @@ class CombinedLossTim(nn.Layer):
         if gt_mask.dtype == paddle.float32:
             gt_mask = paddle.cast(gt_mask, dtype=paddle.int32)
 
-        loss_seg    = self.loss_func[1](input[1], gt_mask, is_segment)
-        loss2       = {key: loss_seg[key] * 0.5 for key in loss_seg}
+        loss_seg    = self.loss_func[1](input[1], gt_mask, is_segment, gt_mask_weight)
+        loss2       = {key: loss_seg[key] * 0.75 for key in loss_seg}
         loss_dict.update(loss2)
         
         loss_dict["loss"] = paddle.add_n(list(loss_dict.values()))

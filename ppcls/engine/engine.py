@@ -22,6 +22,7 @@ from visualdl import LogWriter
 from paddle import nn
 import numpy as np
 import random
+import paddle.nn.functional as F
 
 from ppcls.utils.check import check_gpu
 from ppcls.utils.misc import AverageMeter
@@ -38,6 +39,7 @@ from ppcls.utils.ema import ExponentialMovingAverage
 from ppcls.utils.save_load import load_dygraph_pretrain, load_dygraph_pretrain_from_url
 from ppcls.utils.save_load import init_model
 from ppcls.utils import save_load
+from ppcls.utils.plot_result import save_cls_result, cal_confusion_matrix
 
 from ppcls.data.utils.get_image_list import get_image_list
 from ppcls.data.postprocess import build_postprocess
@@ -45,6 +47,7 @@ from ppcls.data import create_operators
 from ppcls.engine.train import train_epoch
 from ppcls.engine import evaluation
 from ppcls.arch.gears.identity_head import IdentityHead
+from tqdm import tqdm
 
 
 class Engine(object):
@@ -88,7 +91,7 @@ class Engine(object):
         self.vdl_writer = None
         if self.config['Global'][
                 'use_visualdl'] and mode == "train" and dist.get_rank() == 0:
-            vdl_writer_path = os.path.join(self.output_dir, "vdl")
+            vdl_writer_path = os.path.join(self.output_dir, self.config['Arch']['name'],"vdl")
             if not os.path.exists(vdl_writer_path):
                 os.makedirs(vdl_writer_path)
             self.vdl_writer = LogWriter(logdir=vdl_writer_path)
@@ -493,8 +496,11 @@ class Engine(object):
                     out = out["logits"]
                 if isinstance(out, dict) and "output" in out:
                     out = out["output"]
+                if len(out)==2:
+                    out = out[0]
                 result = self.postprocess_func(out, image_file_list)
-                print(result)
+                for rst in result:
+                    print(rst)
                 batch_data.clear()
                 image_file_list.clear()
 
@@ -515,7 +521,9 @@ class Engine(object):
             if hasattr(layer, "rep") and not getattr(layer, "is_repped"):
                 layer.rep()
 
+        model_name = self.config["Arch"]["name"]   
         save_path = os.path.join(self.config["Global"]["save_inference_dir"],
+                                 model_name,
                                  "inference")
 
         model = paddle.jit.to_static(
@@ -535,7 +543,44 @@ class Engine(object):
             f"Export succeeded! The inference model exported has been saved in \"{self.config['Global']['save_inference_dir']}\"."
         )
 
+    @paddle.no_grad()
+    def infer_tim(self, save_images = False, image_mode = "Eval", class_names = None):
+        self.model.eval()
+        model_name  = self.config["Arch"]["name"]
+        dataloader  = build_dataloader(self.config["DataLoader"], image_mode, self.device, self.use_dali)
+        save_fold   = os.path.join(self.config["Global"]["save_inference_dir"], model_name, image_mode)
+        os.makedirs(save_fold, exist_ok=True)
+        
+        pred_label_list   = []
+        gt_label_list     = []
+        pred_clsprob_list = []
+        for iter_id, input_batch in tqdm(enumerate(dataloader)):
+            self.model.eval()
+            input_batch[0] = paddle.to_tensor(input_batch[0])
+            input_batch[1] = input_batch[1].reshape([-1, 1]).astype("int64")
+            output_batch   = self.model(input_batch[0])
+            
+            pred_label, pred_clsprob, gt_label = save_cls_result(input_batch=input_batch, 
+                                                                 output_batch=output_batch,
+                                                                 save_images=save_images, 
+                                                                 save_folder=save_fold,
+                                                                 dsize=[128, 128])
+            pred_label_list.append(pred_label)
+            gt_label_list.append(gt_label)
+            pred_clsprob_list.append(pred_clsprob)
 
+        # 计算混淆矩阵
+        cal_confusion_matrix(pred_label_list, gt_label_list, pred_clsprob_list, 
+                             save_fold, class_names=class_names)
+        
+        # 计算每个类别的预测概率的均值和标准差
+        pred_clsprob_list = np.concatenate(pred_clsprob_list, axis=0)
+        pred_clsprob_list = np.array(pred_clsprob_list)
+        pred_clsprob_mean = np.mean(pred_clsprob_list, axis=0)
+        pred_clsprob_std  = np.std(pred_clsprob_list, axis=0)
+        print(f"prob_mean = {pred_clsprob_mean:.4f}")
+        print(f"prob_std  = {pred_clsprob_std:.4f}")
+        
 class ExportModel(TheseusLayer):
     """
     ExportModel: add softmax onto the model

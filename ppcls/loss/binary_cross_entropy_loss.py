@@ -171,15 +171,18 @@ class BCELoss(nn.Layer):
             is_segment = is_segment.astype('float32')
             
             # is_segment进行维度扩展 从[1] --> [1, 1, 1, 1]
-            is_segment = paddle.unsqueeze(is_segment, axis=1)  # 在第1个维度上添加维度
-            is_segment = paddle.unsqueeze(is_segment, axis=2)  # 在第2个维度上添加维度
-            is_segment = paddle.unsqueeze(is_segment, axis=3)  # 在第3个维度上添加维度
+            while(len(is_segment.shape) < 4):
+                is_segment = paddle.unsqueeze(is_segment, axis=1)  # 在第1个维度上添加维度
 
             loss       = loss * is_segment
             mask       = mask * is_segment
+
+        if weight_mask is not None:
+            weight_mask = weight_mask.astype('float32')
+            loss        = loss * weight_mask
         
         loss = paddle.mean(loss) / (paddle.mean(mask) + self.EPS)
-        label.stop_gradient = True
-        mask.stop_gradient = True
+        #label.stop_gradient = True
+        #mask.stop_gradient = True
 
         return {"BCELoss": loss}

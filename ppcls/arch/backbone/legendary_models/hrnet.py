@@ -24,6 +24,7 @@ from paddle import nn
 from paddle import ParamAttr
 from paddle.nn.functional import upsample
 from paddle.nn.initializer import Uniform
+from paddle.nn import functional as F
 
 from ..base.theseus_layer import TheseusLayer, Identity
 from ....utils.save_load import load_dygraph_pretrain, load_dygraph_pretrain_from_url
@@ -359,6 +360,35 @@ class LastClsOut(TheseusLayer):
             out.append(xi)
         return out
 
+class HRSegmentHead(TheseusLayer):
+    def __init__(self, backbone_channels, num_outputs):
+        super(HRSegmentHead, self).__init__()
+        last_inp_channels = sum(backbone_channels)
+        self.last_layer = nn.Sequential(
+            nn.Conv2D(
+                in_channels=last_inp_channels,
+                out_channels=last_inp_channels,
+                kernel_size=1,
+                stride=1,
+                padding=0),
+            nn.BatchNorm2D(last_inp_channels),
+            nn.ReLU(),
+            nn.Conv2D(
+                in_channels=last_inp_channels,
+                out_channels= num_outputs,
+                kernel_size= 1,
+                stride = 1,
+                padding = 0))
+    
+    def forward(self, x):
+        x0_h, x0_w = x[0].shape[2], x[0].shape[3]
+        x1 = F.interpolate(x[1], (x0_h, x0_w), mode='bilinear')
+        x2 = F.interpolate(x[2], (x0_h, x0_w), mode='bilinear')
+        x3 = F.interpolate(x[3], (x0_h, x0_w), mode='bilinear')
+
+        x = paddle.concat([x[0], x1, x2, x3], 1)
+        x = self.last_layer(x)
+        return x 
 
 class HRNet(TheseusLayer):
     """
@@ -380,15 +410,13 @@ class HRNet(TheseusLayer):
                  return_stages=None):
         super().__init__()
 
-        self.width = width
-        self.has_se = has_se
+        self.width      = width
+        self.has_se     = has_se
         self._class_num = class_num
 
         channels_2 = [self.width, self.width * 2]
         channels_3 = [self.width, self.width * 2, self.width * 4]
-        channels_4 = [
-            self.width, self.width * 2, self.width * 4, self.width * 8
-        ]
+        channels_4 = [self.width, self.width * 2, self.width * 4, self.width * 8]
 
         self.conv_layer1_1 = ConvBNLayer(
             num_channels=3,
@@ -413,21 +441,18 @@ class HRNet(TheseusLayer):
                 downsample=True if i == 0 else False) for i in range(4)
         ])
 
-        self.conv_tr1_1 = ConvBNLayer(
-            num_channels=256, num_filters=width, filter_size=3)
-        self.conv_tr1_2 = ConvBNLayer(
-            num_channels=256, num_filters=width * 2, filter_size=3, stride=2)
+        self.conv_tr1_1 = ConvBNLayer(num_channels=256, num_filters=width, filter_size=3)
+        self.conv_tr1_2 = ConvBNLayer(num_channels=256, num_filters=width * 2, filter_size=3, stride=2)
 
-        self.st2 = Stage(
-            num_modules=1, num_filters=channels_2, has_se=self.has_se)
+        self.st2        = Stage(num_modules=1, num_filters=channels_2, has_se=self.has_se)
 
         self.conv_tr2 = ConvBNLayer(
             num_channels=width * 2,
             num_filters=width * 4,
             filter_size=3,
             stride=2)
-        self.st3 = Stage(
-            num_modules=4, num_filters=channels_3, has_se=self.has_se)
+        
+        self.st3 = Stage(num_modules=4, num_filters=channels_3, has_se=self.has_se)
 
         self.conv_tr3 = ConvBNLayer(
             num_channels=width * 4,
@@ -435,16 +460,15 @@ class HRNet(TheseusLayer):
             filter_size=3,
             stride=2)
 
-        self.st4 = Stage(
-            num_modules=3, num_filters=channels_4, has_se=self.has_se)
+        self.st4 = Stage(num_modules=3, num_filters=channels_4, has_se=self.has_se)
 
-        # classification
+        # classification -----------------------------------------------------------
         num_filters_list = [32, 64, 128, 256]
         self.last_cls = LastClsOut(
             num_channel_list=channels_4,
             has_se=self.has_se,
             num_filters_list=num_filters_list)
-
+        
         last_num_filters = [256, 512, 1024]
         self.cls_head_conv_list = nn.LayerList()
         for idx in range(3):
@@ -463,45 +487,53 @@ class HRNet(TheseusLayer):
         stdv = 1.0 / math.sqrt(2048 * 1.0)
         self.flatten = nn.Flatten(start_axis=1, stop_axis=-1)
 
-        self.fc = nn.Linear(
-            2048,
-            class_num,
-            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+        self.fc = nn.Linear(2048,
+                            class_num,
+                            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+        
+        # segmentation -----------------------------------------------------------
+        self.seg_head_conv = HRSegmentHead(channels_4, 2)
 
         super().init_res(
             stages_pattern,
             return_patterns=return_patterns,
             return_stages=return_stages)
 
-    def forward(self, x):
-        x = self.conv_layer1_1(x)
-        x = self.conv_layer1_2(x)
+    def forward(self, x, is_train=True):
+        x = self.conv_layer1_1(x)    #1/2
+        x = self.conv_layer1_2(x)    #1/4
 
-        x = self.layer1(x)
+        x = self.layer1(x)           #1/4
 
-        tr1_1 = self.conv_tr1_1(x)
-        tr1_2 = self.conv_tr1_2(x)
-        x = self.st2([tr1_1, tr1_2])
+        tr1_1 = self.conv_tr1_1(x)   #1/4
+        tr1_2 = self.conv_tr1_2(x)   #1/8
+        x = self.st2([tr1_1, tr1_2]) #1/4 , 1/8
 
-        tr2 = self.conv_tr2(x[-1])
+        tr2 = self.conv_tr2(x[-1])   #1/16
         x.append(tr2)
-        x = self.st3(x)
+        x = self.st3(x)              #1/4 , 1/8, 1/16
 
-        tr3 = self.conv_tr3(x[-1])
+        tr3 = self.conv_tr3(x[-1])   #1/32
         x.append(tr3)
-        x = self.st4(x)
+        x = self.st4(x)              #1/4 , 1/8, 1/16, 1/32
 
-        x = self.last_cls(x)
-
-        y = x[0]
+        # --------- cls header --------------------------------
+        x_cls = self.last_cls(x)         #1/4 , 1/8, 1/16, 1/32
+        y     = x_cls[0]                     #1/4        
         for idx in range(3):
-            y = paddle.add(x[idx + 1], self.cls_head_conv_list[idx](y))
-
-        y = self.conv_last(y)
-        y = self.avg_pool(y)
+            y = paddle.add(x_cls[idx + 1], self.cls_head_conv_list[idx](y))
+        y = self.conv_last(y)        #1/32
+        y = self.avg_pool(y)         #C*1*1
         y = self.flatten(y)
         y = self.fc(y)
-        return y
+
+        # ---------- seg header --------------------------------
+        seg_out = self.seg_head_conv(x)
+        
+        if is_train:
+            return y, seg_out
+        else:
+            return y
 
 
 def _load_pretrained(pretrained, model, model_url, use_ssld):
@@ -795,3 +827,11 @@ def SE_HRNet_W64_C(pretrained=False, use_ssld=False, **kwargs):
         **kwargs)
     _load_pretrained(pretrained, model, MODEL_URLS["SE_HRNet_W64_C"], use_ssld)
     return model
+
+
+# main function for standalone run
+if __name__ == '__main__':
+    model = HRNet_W18_C(pretrained=True)
+    img = paddle.rand([1, 3, 224, 224])
+    outs = model(img)
+    print(outs.shape)

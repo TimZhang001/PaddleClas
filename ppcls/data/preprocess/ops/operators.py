@@ -172,7 +172,10 @@ class DecodeImage(object):
                 img = Image.open(data)
             else:
                 data = np.frombuffer(img, dtype="uint8")
-                img = cv2.imdecode(data, 1)
+                if self.to_rgb:
+                    img  = cv2.imdecode(data, 1)
+                else:
+                    img  = cv2.imdecode(data, 0)
         else:
             raise ValueError("invalid input 'img' in DecodeImage")
 
@@ -232,6 +235,28 @@ class ResizeImage(object):
             w = self.w
             h = self.h
         return self._resize_func(img, (w, h))
+
+
+class ReCompose(object):
+    """ ReCompose image """
+
+    def __init__(self):
+        pass
+
+    def __call__(self, img):
+        if isinstance(img, np.ndarray):
+            img_h, img_w = img.shape[:2]
+        else:
+            img_w, img_h = img.size
+
+        assert (len(img.shape) == 3 and img.shape[2] == 1) or (len(img.shape) == 2)
+
+        image1 = img[:, 0:img.shape[1]//3]
+        image2 = img[:, img.shape[1]//3:img.shape[1]//3*2]
+        image3 = img[:, img.shape[1]//3*2:img.shape[1]]
+        img  = np.stack((image1, image2, image3), axis=2)
+
+        return img
 
 
 class CropWithPadding(RandomResizedCrop):
@@ -570,6 +595,29 @@ class NormalizeImage(object):
         return img.astype(self.output_dtype)
 
 
+class NormalizeImageTim(object):
+    """ normalize image such as substract mean, divide std
+    """
+
+    def __init__(self, scale = None, output_fp16=False,):
+        if isinstance(scale, str):
+            scale = eval(scale)
+        self.scale = np.float32(scale if scale is not None else 1.0 / 255.0)
+        self.output_dtype = 'float16' if output_fp16 else 'float32'
+
+    def __call__(self, img):
+        from PIL import Image
+        if isinstance(img, Image.Image):
+            img = np.array(img)
+
+        assert isinstance(img,
+                          np.ndarray), "invalid input 'img' in NormalizeImage"
+
+        img = (img.astype('float32') * self.scale)
+
+        return img.astype(self.output_dtype)
+
+
 class ToCHWImage(object):
     """ convert hwc image to chw image
     """
@@ -581,6 +629,9 @@ class ToCHWImage(object):
         from PIL import Image
         if isinstance(img, Image.Image):
             img = np.array(img)
+        
+        if len(img.shape) == 2:
+            img = np.expand_dims(img, axis=2)
 
         return img.transpose((2, 0, 1))
 

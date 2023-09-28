@@ -20,7 +20,9 @@ import paddle
 
 from ppcls.utils.misc import AverageMeter
 from ppcls.utils import logger
-
+from sklearn.metrics import confusion_matrix
+import numpy as np
+import paddle.nn.functional as F
 
 def classification_eval(engine, epoch_id=0):
     if hasattr(engine.eval_metric_func, "reset"):
@@ -39,8 +41,10 @@ def classification_eval(engine, epoch_id=0):
     total_samples = len(
         engine.eval_dataloader.
         dataset) if not engine.use_dali else engine.eval_dataloader.size
-    max_iter = len(engine.eval_dataloader) - 1 if platform.system(
-    ) == "Windows" else len(engine.eval_dataloader)
+    max_iter = len(engine.eval_dataloader) - 1 if platform.system() == "Windows" else len(engine.eval_dataloader)
+    
+    gt_label = []
+    pred_label = []
     for iter_id, batch in enumerate(engine.eval_dataloader):
         if iter_id >= max_iter:
             break
@@ -55,6 +59,7 @@ def classification_eval(engine, epoch_id=0):
         time_info["reader_cost"].update(time.time() - tic)
         batch_size = batch[0].shape[0]
         batch[0] = paddle.to_tensor(batch[0])
+        
         if not engine.config["Global"].get("use_multilabel", False):
             batch[1] = batch[1].reshape([-1, 1]).astype("int64")
 
@@ -115,6 +120,12 @@ def classification_eval(engine, epoch_id=0):
             labels = batch[1:]
             preds  = out
 
+        gt_label.append(batch[1].numpy())
+        if len(out) == 2:
+            pred_label.append(out[0].numpy())
+        else:
+            pred_label.append(out.numpy())
+
         # calc loss
         if engine.eval_loss_func is not None:
             if engine.amp and engine.amp_eval:
@@ -162,6 +173,14 @@ def classification_eval(engine, epoch_id=0):
     if engine.use_dali:
         engine.eval_dataloader.reset()
 
+    # 计算混淆矩阵
+    pred_label = paddle.to_tensor(np.concatenate(pred_label))
+    pred_label = F.softmax(pred_label, axis=-1)
+    pred_label = pred_label.argsort(axis=1)[:,-1]
+    gt_label   = np.concatenate(gt_label)
+    cm         = confusion_matrix(gt_label, pred_label)
+    print(cm)
+    
     if "ATTRMetric" in engine.config["Metric"]["Eval"][0]:
         metric_msg = ", ".join([
             "evalres: ma: {:.3f} label_f1: {:.3f} label_pos_recall: {:.3f} label_neg_recall: {:.3f} instance_f1: {:.3f} instance_acc: {:.3f} instance_prec: {:.3f} instance_recall: {:.3f}".

@@ -51,16 +51,21 @@ def _extract_student_weights(all_params, student_prefix="Student."):
 
 
 def load_dygraph_pretrain(model, path=None):
-    if not (os.path.isdir(path) or os.path.exists(path + '.pdparams')):
-        raise ValueError("Model pretrain path {}.pdparams does not "
-                         "exists.".format(path))
-    param_state_dict = paddle.load(path + ".pdparams")
-    if isinstance(model, list):
-        for m in model:
-            if hasattr(m, 'set_dict'):
-                m.set_dict(param_state_dict)
+    #if not (os.path.isdir(path) or os.path.exists(path + '.pdparams')):
+    #    raise ValueError("Model pretrain path {}.pdparams does not ""exists.".format(path))
+    model_path = path + ".pdparams"
+    if not os.path.exists(model_path):
+        logger.info("Given pretrain path {}.pdparams does not exists, ".format(model_path))
     else:
-        model.set_dict(param_state_dict)
+        param_state_dict = paddle.load(model_path)
+        if isinstance(model, list):
+            for m in model:
+                if hasattr(m, 'set_dict'):
+                    m.set_dict(param_state_dict)
+        else:
+            model.set_dict(param_state_dict)
+
+        logger.info("Finish initing model from {}".format(model_path))
     return
 
 

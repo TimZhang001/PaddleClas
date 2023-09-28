@@ -1,33 +1,33 @@
 # global configs
 Global:
   checkpoints: null
-  pretrained_model: "/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/output/MobileNetV3_small_x1_0/best_model"
+  pretrained_model: "/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/output/MobileNetV3_small_x1_25/best_model"
   output_dir: ./output/
   device: gpu
-  save_interval: 50
+  save_interval: 20
   eval_during_train: True
   eval_interval: 1
-  epochs: 360
+  epochs: 120
   print_batch_step: 10
   use_visualdl: True
+  
   # used for static mode and model export
   image_shape: [3, 120, 120]
   save_inference_dir: ./inference
 
 # model architecture
 Arch:
-  name: MobileNetV3_small_x1_0
+  name: MobileNetV3_small_x1_25
   class_num: 12
   input_channel: 3
   pretrained: True
-  use_ssld: True
 
 # loss function config for traing/eval process
 Loss:
   Train:
     - CELoss:
         weight: 1.0
-        epsilon: 0.30
+        epsilon: 0.25
     - BCELoss:
         weight: null
   Eval:
@@ -61,6 +61,7 @@ DataLoader:
       aug_rotate90: True
       aug_scaleRotate: False
       aug_brightness_contrast: True
+      aug_rotate: True
       down_factor: 2
 
     sampler:
@@ -84,11 +85,12 @@ DataLoader:
       aug_rotate90: True
       aug_scaleRotate: False
       aug_brightness_contrast: True
+      aug_rotate: True
       down_factor: 2
     
     sampler:
       name: DistributedBatchSampler
-      batch_size: 64
+      batch_size: 128
       drop_last: False
       shuffle: False
     loader:
@@ -107,6 +109,7 @@ DataLoader:
       aug_rotate90: False
       aug_scaleRotate: False
       aug_brightness_contrast: False
+      aug_rotate: False
       down_factor: 2
 
     sampler:
@@ -130,6 +133,7 @@ DataLoader:
       aug_rotate90: False
       aug_scaleRotate: False
       aug_brightness_contrast: False
+      aug_rotate: False
       down_factor: 2
 
     sampler:
@@ -153,6 +157,7 @@ DataLoader:
       aug_rotate90: False
       aug_scaleRotate: False
       aug_brightness_contrast: False
+      aug_rotate: False
       down_factor: 2
 
     sampler:
@@ -165,7 +170,7 @@ DataLoader:
       use_shared_memory: True
 
 Infer:
-  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3/2
+  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3/val/06_Cuoceng-
   batch_size: 10
   transforms:
     - DecodeImage:
@@ -173,7 +178,7 @@ Infer:
         channel_first: False
     - ReCompose:
     - ResizeImage:
-        resize_short: 128
+        resize_short: 120
     - NormalizeImageTim:
         scale: 1.0/255.0
     - ToCHWImage:

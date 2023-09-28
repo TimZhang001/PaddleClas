@@ -28,7 +28,7 @@ from easydict import EasyDict
 from ppcls.metric.avg_metrics import AvgMetrics
 from ppcls.utils.misc import AverageMeter, AttrMeter
 from ppcls.utils import logger
-
+from sklearn.metrics import confusion_matrix
 
 class TopkAcc(AvgMetrics):
     def __init__(self, topk=(1, 5)):
@@ -103,6 +103,13 @@ class TopkAccTim(AvgMetrics):
                                               x.shape[0])
 
         self.topk = list(filter(lambda k: k <= output_dims, self.topk))
+
+        # 根据x和label计算混淆矩阵
+        #pred_list = -F.log_softmax(x, axis=1)
+        #pred_list = paddle.argmax(pred_list, axis=1)
+        #gt_list   = np.concatenate(label)
+        #cm        = confusion_matrix(gt_list, pred_list)
+        #metric_dict["confusion_matrix"] = cm
 
         return metric_dict
 

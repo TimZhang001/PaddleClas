@@ -14,3 +14,5 @@ nohup.out
 .DS_Store
 .idea
 dataset
+output/vdl
+inference/

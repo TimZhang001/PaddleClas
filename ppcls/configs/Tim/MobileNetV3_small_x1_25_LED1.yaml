@@ -1,7 +1,7 @@
 # global configs
 Global:
   checkpoints: null
-  pretrained_model: "/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/output/MobileNetV3_small_x1_0/best_model"
+  pretrained_model: "/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/output/MobileNetV3_small_x1_25/best_model"
   output_dir: ./output/
   device: gpu
   save_interval: 50
@@ -11,23 +11,26 @@ Global:
   print_batch_step: 10
   use_visualdl: True
   # used for static mode and model export
-  image_shape: [3, 120, 120]
+  image_shape: [1, 120, 120]
   save_inference_dir: ./inference
 
 # model architecture
 Arch:
-  name: MobileNetV3_small_x1_0
-  class_num: 12
-  input_channel: 3
+  name: MobileNetV3_small_x1_25
+  class_num: 2
+  input_channel: 1
   pretrained: True
-  use_ssld: True
+
+# model ema
+EMA:
+  decay: 0.98
 
 # loss function config for traing/eval process
 Loss:
   Train:
     - CELoss:
         weight: 1.0
-        epsilon: 0.30
+        epsilon: 0.2
     - BCELoss:
         weight: null
   Eval:
@@ -51,8 +54,8 @@ Optimizer:
 DataLoader:
   Train:
     dataset:
-      name: MVTecDataset2
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
+      name: MVTecDataset
+      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED"
       kind: 'train'
       size: 120
       random_crop: False
@@ -65,7 +68,7 @@ DataLoader:
 
     sampler:
       name: DistributedBatchSampler
-      batch_size: 256
+      batch_size: 128
       drop_last: False
       shuffle: True
     loader:
@@ -74,8 +77,8 @@ DataLoader:
 
   Eval:
     dataset: 
-      name: MVTecDataset2
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
+      name: MVTecDataset
+      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED"
       kind: 'val'
       size: 120
       random_crop: False
@@ -97,55 +100,9 @@ DataLoader:
   
   Test1:
     dataset: 
-      name: MVTecDataset2
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
-      kind: 'test1'
-      size: 120
-      random_crop: False
-      interpolation: bicubic
-      aug_flip: False
-      aug_rotate90: False
-      aug_scaleRotate: False
-      aug_brightness_contrast: False
-      down_factor: 2
-
-    sampler:
-      name: DistributedBatchSampler
-      batch_size: 256
-      drop_last: False
-      shuffle: False
-    loader:
-      num_workers: 8
-      use_shared_memory: True
-
-  Test2:
-    dataset: 
-      name: MVTecDataset2
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
-      kind: 'test2'
-      size: 120
-      random_crop: False
-      interpolation: bicubic
-      aug_flip: False
-      aug_rotate90: False
-      aug_scaleRotate: False
-      aug_brightness_contrast: False
-      down_factor: 2
-
-    sampler:
-      name: DistributedBatchSampler
-      batch_size: 256
-      drop_last: False
-      shuffle: False
-    loader:
-      num_workers: 8
-      use_shared_memory: True
-
-  Test3:
-    dataset: 
-      name: MVTecDataset2
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
-      kind: 'test3'
+      name: MVTecDataset
+      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED"
+      kind: 'test'
       size: 120
       random_crop: False
       interpolation: bicubic
@@ -165,15 +122,14 @@ DataLoader:
       use_shared_memory: True
 
 Infer:
-  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3/2
+  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED/test/00_OK
   batch_size: 10
   transforms:
     - DecodeImage:
         to_rgb: False
         channel_first: False
-    - ReCompose:
     - ResizeImage:
-        resize_short: 128
+        resize_short: 120
     - NormalizeImageTim:
         scale: 1.0/255.0
     - ToCHWImage:
@@ -185,7 +141,7 @@ Infer:
 Metric:
   Train:
     - TopkAccTim:
-        topk: [1, 2]
+        topk: [1]
   Eval:
     - TopkAccTim:
-        topk: [1, 2]
+        topk: [1]

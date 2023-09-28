@@ -195,7 +195,7 @@ def parse_args():
         '-c',
         '--config',
         type=str,
-        default='/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/ppcls/configs/Tim/MobileNetV3_small_x1_0.yaml',
+        default='/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/ppcls/configs/Tim/MobileNetV3_small_x1_25.yaml',
         help='config file path')
     parser.add_argument(
         '-o',
