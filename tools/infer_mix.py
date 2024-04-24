@@ -24,8 +24,13 @@ from ppcls.utils import config
 from ppcls.engine.engine import Engine
 
 if __name__ == "__main__":
-    args = config.parse_args()
-    config = config.get_config(
-        args.config, overrides=args.override, show=False)
-    engine = Engine(config, mode="eval")
-    engine.eval(epoch_id=9999)
+    args   = config.parse_args()
+    config = config.get_config(args.config, overrides=args.override, show=False)    
+    engine = Engine(config, mode="infer")
+
+    class_names = ["00_OK", "01_NG"]   
+    save_images = True
+    for image_mode  in ["Eval", "Train"]: 
+        print("\n---------------image_mode: ", image_mode)
+        assert image_mode in ["Eval", "Train", "Test1", "Test2", "Test3"], "image_mode should be Eval or Test1 or Test2 or Train"
+        engine.infer_tim(save_images=save_images, image_mode=image_mode, class_names=None)

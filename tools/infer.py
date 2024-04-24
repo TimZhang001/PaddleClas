@@ -27,11 +27,4 @@ if __name__ == "__main__":
     args   = config.parse_args()
     config = config.get_config(args.config, overrides=args.override, show=False)    
     engine = Engine(config, mode="infer")
-    #class_names = ["00_OK", "01_NG"]
-    
-    save_images = False
-    for image_mode  in ["Eval", "Train", "Test1", "Test2", "Test3"]: #["Eval", "Train", "Test1", "Test2", "Test3"]: 
-        print("\n---------------image_mode: ", image_mode)
-        assert image_mode in ["Eval", "Train", "Test1", "Test2", "Test3"], "image_mode should be Eval or Test1 or Test2 or Train"
-        engine.infer_tim(save_images=save_images, image_mode=image_mode, class_names=None)
-        #engine.infer()
+    engine.infer()

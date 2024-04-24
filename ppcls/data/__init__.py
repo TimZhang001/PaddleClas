@@ -32,6 +32,7 @@ from ppcls.data.dataloader.multi_scale_dataset import MultiScaleDataset
 from ppcls.data.dataloader.person_dataset import Market1501, MSMT17
 from ppcls.data.dataloader.face_dataset import FiveValidationDataset, AdaFaceDataset
 from ppcls.data.dataloader.mvtec2 import MVTecDataset2
+from ppcls.data.dataloader.mvtec_single import MVTecDatasetSingle
 from ppcls.data.dataloader.mvtec  import MVTecDataset
 
 # sampler

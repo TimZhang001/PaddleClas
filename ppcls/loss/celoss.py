@@ -45,10 +45,10 @@ class CELoss(nn.Layer):
         if isinstance(x, dict):
             x = x["logits"]
 
-        if isinstance(label, list) and len(label) > 1:
+        if isinstance(label, list) and len(label) >= 1:
             label = label[0]
         
-        if isinstance(x, list) and len(x) > 1:
+        if isinstance(x, list) and len(x) >= 1:
             x = x[0]
         
         if self.epsilon is not None:

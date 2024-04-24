@@ -30,7 +30,7 @@ def preprocess_mask(img):
 
     return mask
 
-class MVTecDataset2(Dataset):
+class MVTecDatasetSingle(Dataset):
     def __init__(self, 
                  dataset_path='D:/dataset/mvtec_anomaly_detection', 
                  kind= 'train',
@@ -209,14 +209,8 @@ class MVTecDataset2(Dataset):
         return list(x), list(class_id), list(is_segment), list(mask)
         
     def sample_process_0(self, image):
-        image = Image.open(image).convert('L')
+        image = Image.open(image).convert('RGB')
         image = np.array(image).astype(np.uint8)
-
-        # 对输入的图像进行水平方向的拆分[h, w, 1] --> [h, w/3, 3]
-        image1 = image[:, 0:image.shape[1]//3]
-        image2 = image[:, image.shape[1]//3:image.shape[1]//3*2]
-        image3 = image[:, image.shape[1]//3*2:image.shape[1]]
-        image  = np.stack((image1, image2, image3), axis=2)
 
         # resize
         if self.size is not None:
@@ -254,15 +248,8 @@ class MVTecDataset2(Dataset):
         return image, mask
     
     def sample_process(self, image, mask):
-        image = Image.open(image).convert('L')
+        image = Image.open(image).convert('RGB')
         image = np.array(image).astype(np.uint8)
-
-        # 对输入的图像进行水平方向的拆分[h, w, 1] --> [h, w/3, 3]
-        image1 = image[:, 0:image.shape[1]//3]
-        image2 = image[:, image.shape[1]//3:image.shape[1]//3*2]
-        image3 = image[:, image.shape[1]//3*2:image.shape[1]]
-        image  = np.stack((image1, image2, image3), axis=2)
-
         mask  = self.read_json_resize(mask, [self.size, self.size], False)
         mask  = np.array(mask).astype(np.float32)
    
@@ -337,12 +324,6 @@ class MVTecDataset2(Dataset):
 
         if dilate is not None and dilate > 1:
             image = cv2.dilate(image, np.ones((dilate, dilate)))
-              
-        # 对输入的图像进行水平方向的拆分[h, w, 1] --> [h, w/3, 3]
-        image1 = image[:, 0:image.shape[1]//3]
-        image2 = image[:, image.shape[1]//3:image.shape[1]//3*2]
-        image3 = image[:, image.shape[1]//3*2:image.shape[1]]
-        image  = np.stack((image1, image2, image3), axis=2)
         
         # rgb->gray
         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -390,7 +371,7 @@ class MVTecDataset2(Dataset):
         padding   = (downsize_factor, downsize_factor, downsize_factor, downsize_factor)
         pad_layer = paddle.nn.Pad2D(padding)
 
-        img_t = pad_layer(img_t)
+        img_t     = pad_layer(img_t)
 
         kernel_size = 2 * downsize_factor + 1
         image_np    = F.avg_pool2d(img_t, kernel_size=kernel_size, stride=downsize_factor).numpy()

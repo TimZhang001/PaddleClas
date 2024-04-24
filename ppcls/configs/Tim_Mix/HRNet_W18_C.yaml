@@ -1,36 +1,37 @@
+eval_height: &eval_height 120
+eval_width: &eval_width 120
+
 # global configs
 Global:
   checkpoints: null
-  pretrained_model: "/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/output/MobileNetV3_small_x1_25/best_model"
+  pretrained_model: null
   output_dir: ./output/
   device: gpu
-  save_interval: 50
+  save_interval: 20
   eval_during_train: True
   eval_interval: 1
-  epochs: 360
+  epochs: 120
   print_batch_step: 10
   use_visualdl: True
+  
   # used for static mode and model export
-  image_shape: [1, 120, 120]
+  image_shape: [3, *eval_height, *eval_width]
   save_inference_dir: ./inference
+  best_model: ./output/MobileNetV3_small_x1_25/best_model
 
 # model architecture
 Arch:
-  name: MobileNetV3_small_x1_25
-  class_num: 2
-  input_channel: 1
+  name: HRNet_W18_C
+  class_num: 12
   pretrained: True
-
-# model ema
-EMA:
-  decay: 0.98
-
+  use_ssld: True
+  input_channel: 3
+ 
 # loss function config for traing/eval process
 Loss:
   Train:
     - CELoss:
         weight: 1.0
-        epsilon: 0.2
     - BCELoss:
         weight: null
   Eval:
@@ -39,36 +40,37 @@ Loss:
     - BCELoss:
         weight: null
 
+
 Optimizer:
   name: Momentum
   momentum: 0.9
   lr:
-    name: Cosine
-    learning_rate: 0.13
-    warmup_epoch: 5
+    name: Piecewise
+    learning_rate: 0.01
+    decay_epochs: [30, 60, 90]
+    values: [0.1, 0.01, 0.001, 0.0001]
   regularizer:
     name: 'L2'
-    coeff: 0.00002
+    coeff: 0.0001
 
-# data loader for train and eval
+
 DataLoader:
   Train:
     dataset:
-      name: MVTecDataset
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED"
+      name: MVTecDataset2
+      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
       kind: 'train'
-      size: 120
+      size: 128
       random_crop: False
       interpolation: bicubic
       aug_flip: True
       aug_rotate90: True
       aug_scaleRotate: False
       aug_brightness_contrast: True
-      down_factor: 2
 
     sampler:
       name: DistributedBatchSampler
-      batch_size: 128
+      batch_size: 32
       drop_last: False
       shuffle: True
     loader:
@@ -77,17 +79,16 @@ DataLoader:
 
   Eval:
     dataset: 
-      name: MVTecDataset
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED"
+      name: MVTecDataset2
+      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3"
       kind: 'val'
-      size: 120
+      size: 128
       random_crop: False
       interpolation: bicubic
       aug_flip: True
       aug_rotate90: True
       aug_scaleRotate: False
       aug_brightness_contrast: True
-      down_factor: 2
     
     sampler:
       name: DistributedBatchSampler
@@ -97,39 +98,17 @@ DataLoader:
     loader:
       num_workers: 4
       use_shared_memory: True
-  
-  Test1:
-    dataset: 
-      name: MVTecDataset
-      dataset_path: "/home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED"
-      kind: 'test'
-      size: 120
-      random_crop: False
-      interpolation: bicubic
-      aug_flip: False
-      aug_rotate90: False
-      aug_scaleRotate: False
-      aug_brightness_contrast: False
-      down_factor: 2
-
-    sampler:
-      name: DistributedBatchSampler
-      batch_size: 256
-      drop_last: False
-      shuffle: False
-    loader:
-      num_workers: 8
-      use_shared_memory: True
 
 Infer:
-  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED/test/00_OK
+  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3/2
   batch_size: 10
   transforms:
     - DecodeImage:
         to_rgb: False
         channel_first: False
+    - ReCompose:
     - ResizeImage:
-        resize_short: 120
+        resize_short: *eval_height
     - NormalizeImageTim:
         scale: 1.0/255.0
     - ToCHWImage:
@@ -141,7 +120,7 @@ Infer:
 Metric:
   Train:
     - TopkAccTim:
-        topk: [1]
+        topk: [1, 2]
   Eval:
     - TopkAccTim:
-        topk: [1]
+        topk: [1, 2]

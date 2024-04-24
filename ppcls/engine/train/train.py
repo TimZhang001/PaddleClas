@@ -23,8 +23,6 @@ import paddle.nn.functional as F
 
 def train_epoch(engine, epoch_id, print_batch_step):
     tic = time.time()
-    gt_label = []
-    pred_label = []
     for iter_id, batch in enumerate(engine.train_dataloader):
         if iter_id >= engine.max_iter:
             break
@@ -41,7 +39,6 @@ def train_epoch(engine, epoch_id, print_batch_step):
         batch_size = batch[0].shape[0]
         if not engine.config["Global"].get("use_multilabel", False):
             batch[1] = batch[1].reshape([batch_size, -1])
-            gt_label.append(batch[1].numpy())
         engine.global_step += 1
 
         # image input
@@ -53,15 +50,17 @@ def train_epoch(engine, epoch_id, print_batch_step):
                     },
                     level=amp_level):
                 out = forward(engine, batch)
-                loss_dict = engine.train_loss_func(out, batch[1])
+                if len(out) == 2 and out[0].shape != out[1].shape:
+                    loss_dict = engine.train_loss_func(out, batch[1:])
+                else:
+                    loss_dict = engine.train_loss_func(out, batch[1])
+
         else:
             out = forward(engine, batch)
-            if len(out) == 2:
+            if len(out) == 2 and out[0].shape != out[1].shape:
                 loss_dict = engine.train_loss_func(out, batch[1:])
-                pred_label.append(out[0].numpy())
             else:
                 loss_dict = engine.train_loss_func(out, batch[1])
-                pred_label.append(out.numpy())
 
         # loss
         loss = loss_dict["loss"] / engine.update_freq
@@ -105,14 +104,6 @@ def train_epoch(engine, epoch_id, print_batch_step):
     for i in range(len(engine.lr_sch)):
         if getattr(engine.lr_sch[i], "by_epoch", False):
             engine.lr_sch[i].step()
-
-    # 计算混淆矩阵
-    pred_label = paddle.to_tensor(np.concatenate(pred_label))
-    pred_label = F.softmax(pred_label, axis=-1)
-    pred_label = pred_label.argsort(axis=1)[:,-1]
-    gt_label   = np.concatenate(gt_label)
-    cm        = confusion_matrix(gt_label, pred_label)
-    print(cm)
 
 
 def forward(engine, batch):

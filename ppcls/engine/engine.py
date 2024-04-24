@@ -48,7 +48,7 @@ from ppcls.engine.train import train_epoch
 from ppcls.engine import evaluation
 from ppcls.arch.gears.identity_head import IdentityHead
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
 
 class Engine(object):
     def __init__(self, config, mode="train"):
@@ -98,7 +98,7 @@ class Engine(object):
 
         # set device
         assert self.config["Global"][
-            "device"] in ["cpu", "gpu", "xpu", "npu", "mlu"]
+            "device"].split(":")[0] in ["cpu", "gpu", "xpu", "npu", "mlu"]
         self.device = paddle.set_device(self.config["Global"]["device"])
         logger.info('train with paddle {} and device {}'.format(
             paddle.__version__, self.device))
@@ -191,6 +191,10 @@ class Engine(object):
         else:
             self.eval_metric_func = None
 
+        if self.mode == "export":
+            config["Arch"]["export_model"] = True
+            config["Arch"]["is_train"]     = False
+
         # build model
         self.model = build_model(self.config, self.mode)
         # set @to_static for benchmark, skip this by default.
@@ -198,6 +202,7 @@ class Engine(object):
 
         # load_pretrain
         if self.config["Global"]["pretrained_model"] is not None:
+            print(f"Loading pretrained model from {self.config['Global']['pretrained_model']}")
             if self.config["Global"]["pretrained_model"].startswith("http"):
                 load_dygraph_pretrain_from_url(
                     [self.model, getattr(self, 'train_loss_func', None)],
@@ -206,6 +211,11 @@ class Engine(object):
                 load_dygraph_pretrain(
                     [self.model, getattr(self, 'train_loss_func', None)],
                     self.config["Global"]["pretrained_model"])
+        
+        if self.mode != "train":
+            if "best_model" in self.config["Global"] and self.config["Global"]["best_model"] is not None:
+                print(f"Loading best model from {self.config['Global']['best_model']}")
+                load_dygraph_pretrain([self.model, getattr(self, 'train_loss_func', None)], self.config["Global"]["best_model"])
 
         # build optimizer
         if self.mode == 'train':
@@ -468,6 +478,7 @@ class Engine(object):
         self.model.eval()
         batch_data = []
         image_file_list = []
+        result_list = []
         for idx, image_file in enumerate(image_list):
             with open(image_file, 'rb') as f:
                 x = f.read()
@@ -496,13 +507,37 @@ class Engine(object):
                     out = out["logits"]
                 if isinstance(out, dict) and "output" in out:
                     out = out["output"]
-                if len(out)==2:
-                    out = out[0]
+                #if len(out)==2:
+                #    out = out[0]
                 result = self.postprocess_func(out, image_file_list)
-                for rst in result:
-                    print(rst)
+                result_list.extend(result)
                 batch_data.clear()
                 image_file_list.clear()
+
+        # 根据'class_ids'的值对result_list进行排序
+        result_list = sorted(result_list, key=lambda x: x['class_ids'])
+        for result in result_list:
+            print(result)
+
+        print("----------------------------------")
+        # 根据'scores'的值对result_list进行排序
+        #result_list = sorted(result_list, key=lambda x: x['scores'])
+        #for result in result_list:
+        #    print(result)
+
+        # 对结果进行处理分析，分析所有结果的置信度，
+        confidence_list = []
+        for result in result_list:
+            confidence_list.append(result['scores'])
+        confidence_list = np.array(confidence_list)
+
+        # 绘制置信度直方图，并进行本地保存
+        plt.hist(confidence_list, bins=20, density=True)
+        plt.xlabel('Confidence')
+        plt.ylabel('Density')
+        plt.title('Confidence Distribution, mean={:.3f}'.format(np.mean(confidence_list)))
+        plt.grid(True)
+        plt.savefig('confidence_distribution.png')
 
     def export(self):
         assert self.mode == "export"

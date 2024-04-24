@@ -23,6 +23,9 @@ from ppcls.utils import logger
 from sklearn.metrics import confusion_matrix
 import numpy as np
 import paddle.nn.functional as F
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
 
 def classification_eval(engine, epoch_id=0):
     if hasattr(engine.eval_metric_func, "reset"):
@@ -121,7 +124,7 @@ def classification_eval(engine, epoch_id=0):
             preds  = out
 
         gt_label.append(batch[1].numpy())
-        if len(out) == 2:
+        if len(out) == 2 and out[0].shape != out[1].shape:
             pred_label.append(out[0].numpy())
         else:
             pred_label.append(out.numpy())
@@ -174,13 +177,36 @@ def classification_eval(engine, epoch_id=0):
         engine.eval_dataloader.reset()
 
     # 计算混淆矩阵
-    pred_label = paddle.to_tensor(np.concatenate(pred_label))
-    pred_label = F.softmax(pred_label, axis=-1)
-    pred_label = pred_label.argsort(axis=1)[:,-1]
-    gt_label   = np.concatenate(gt_label)
-    cm         = confusion_matrix(gt_label, pred_label)
+    pred_result = paddle.to_tensor(np.concatenate(pred_label))
+    pred_score  = F.softmax(pred_result, axis=-1)
+    pred_label  = pred_score.argsort(axis=1)[:,-1]
+    gt_label    = np.concatenate(gt_label)
+    cm          = confusion_matrix(gt_label, pred_label)
     print(cm)
-    
+
+    # 获取pred_label 对应的pred_score
+    pred_score_max  = pred_score.max(axis=1)
+    pred_score_mean = pred_score_max.mean()
+    pred_score_max = np.array(pred_score_max)
+
+    # 将混淆矩阵绘制成图像a，将pred_score_max的直方图绘制为图像b, 并对图像进行保存
+    plt.figure(figsize=(12, 6), dpi=100)
+    plt.subplot(1, 2, 1)
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted labels')
+    plt.ylabel('True labels')
+    plt.subplot(1, 2, 2)
+    plt.hist(pred_score_max, bins=20, density=True)
+    plt.xlabel('Confidence')
+    plt.ylabel('Density')
+    plt.title('Confidence Distribution, mean={:.3f}'.format(np.mean(pred_score_max)))
+    plt.grid(True)
+    save_path = os.path.join(engine.config["Global"]["output_dir"], engine.config["Arch"]["name"], "eval")
+    os.makedirs(save_path, exist_ok=True)
+    save_name = os.path.join(save_path, "confusion_matrix_predict_score_{}.png".format(epoch_id))
+    plt.savefig(save_name)
+
     if "ATTRMetric" in engine.config["Metric"]["Eval"][0]:
         metric_msg = ", ".join([
             "evalres: ma: {:.3f} label_f1: {:.3f} label_pos_recall: {:.3f} label_neg_recall: {:.3f} instance_f1: {:.3f} instance_acc: {:.3f} instance_prec: {:.3f} instance_recall: {:.3f}".

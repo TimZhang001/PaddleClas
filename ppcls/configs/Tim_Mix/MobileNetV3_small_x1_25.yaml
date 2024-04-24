@@ -1,7 +1,7 @@
 # global configs
 Global:
   checkpoints: null
-  pretrained_model: "/home/zhangss/Tim.Zhang/002_PaddleKit/PaddleClas/output/MobileNetV3_small_x1_25/best_model"
+  pretrained_model: null
   output_dir: ./output/
   device: gpu
   save_interval: 20
@@ -14,10 +14,11 @@ Global:
   # used for static mode and model export
   image_shape: [3, 120, 120]
   save_inference_dir: ./inference
+  best_model: ./output/MobileNetV3_Mix_small_x1_25/best_model
 
 # model architecture
 Arch:
-  name: MobileNetV3_small_x1_25
+  name: MobileNetV3_Mix_small_x1_25
   class_num: 12
   input_channel: 3
   pretrained: True
