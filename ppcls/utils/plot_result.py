@@ -136,8 +136,7 @@ def cal_confusion_matrix(pred_label_list, gt_label_list, pred_prob_list, save_fo
         pred_prob_list = np.concatenate(pred_prob_list)
 
     if class_names is None:
-        class_names = ['00_OK', '01_Shuangbao', '02_Modian', '03_Mark', '04_Tuoluo', '05_Kongdong', \
-                      '06_Cuoceng-', '07_Ring-', '08_Zhenheng-', '09_Ganke-', '10_Dianjiyichang', '11_Huashang']
+        class_names = ['00_OK', '01_NG']
 
     # 生成混淆矩阵
     if len(gt_label_list.shape) == 2:

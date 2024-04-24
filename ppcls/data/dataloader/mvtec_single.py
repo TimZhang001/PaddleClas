@@ -9,8 +9,7 @@ import json
 from scipy.ndimage.morphology import distance_transform_edt
 import paddle.nn.functional as F
 
-CLASS_NAMES_HUCAN = ['00_OK', '01_Shuangbao', '02_Modian', '03_Mark', '04_Tuoluo', '05_Kongdong', \
-                     '06_Cuoceng-', '07_Ring-', '08_Zhenheng-', '09_Ganke-', '10_Dianjiyichang', '11_Huashang']
+CLASS_NAMES_HUCAN = ['00_OK', '01_Blob']  # 需要配置类别名称
 
 CLASS_NAMES = CLASS_NAMES_HUCAN # CLASS_NAMES_PRETRAINE
 
@@ -42,12 +41,14 @@ class MVTecDatasetSingle(Dataset):
                  aug_rotate90    = False,
                  aug_scaleRotate = False,
                  aug_rotate      = False,
-                 aug_brightness_contrast = False,):
+                 aug_brightness_contrast = False,
+                 input_channel = 3):
         
         self.dataset_path = dataset_path
         self.kind         = kind
         self.size         = size
         self.down_factor  = down_factor
+        self.input_channel = input_channel
 
         # load dataset -------------------------------------------------------------
         self.x, self.class_id, self.is_segment, self.mask = self.load_dataset_folder()
@@ -55,7 +56,7 @@ class MVTecDatasetSingle(Dataset):
         # 根据 class_id 确定一共有多少个类别，确定每个类别的数量和比例
         
         # 确定有多少个类别
-        self.num_classes = 14 #len(set(self.class_id))
+        self.num_classes = len(CLASS_NAMES) + 1 #len(set(self.class_id))
 
         # 确定每个类别的数量
         self.num_samples = len(self.x)
@@ -139,7 +140,7 @@ class MVTecDatasetSingle(Dataset):
         
         # w * h * c-> c * w * h 
         example                 = dict()
-        example["image"]        = x.transpose((2, 0, 1))    
+        example["image"]        = x.transpose((2, 0, 1)) if len(x.shape) == 3 else np.expand_dims(x, axis=0)
         example["segmentation"] = mask
         example["class_label"]  = paddle.to_tensor([class_id])
         example["is_segment"]   = paddle.to_tensor([is_segment])
@@ -209,7 +210,10 @@ class MVTecDatasetSingle(Dataset):
         return list(x), list(class_id), list(is_segment), list(mask)
         
     def sample_process_0(self, image):
-        image = Image.open(image).convert('RGB')
+        if self.input_channel == 3:
+            image = Image.open(image).convert('RGB')
+        else:
+            image = Image.open(image).convert('L')
         image = np.array(image).astype(np.uint8)
 
         # resize
@@ -248,7 +252,10 @@ class MVTecDatasetSingle(Dataset):
         return image, mask
     
     def sample_process(self, image, mask):
-        image = Image.open(image).convert('RGB')
+        if self.input_channel == 3:
+            image = Image.open(image).convert('RGB')
+        else:
+            image = Image.open(image).convert('L')
         image = np.array(image).astype(np.uint8)
         mask  = self.read_json_resize(mask, [self.size, self.size], False)
         mask  = np.array(mask).astype(np.float32)
@@ -324,9 +331,6 @@ class MVTecDatasetSingle(Dataset):
 
         if dilate is not None and dilate > 1:
             image = cv2.dilate(image, np.ones((dilate, dilate)))
-        
-        # rgb->gray
-        image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         
         if resize_dim is not None:
             image = cv2.resize(image, dsize=resize_dim)

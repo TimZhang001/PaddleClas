@@ -599,7 +599,7 @@ class Engine(object):
                                                                  output_batch=output_batch,
                                                                  save_images=save_images, 
                                                                  save_folder=save_fold,
-                                                                 dsize=[128, 128])
+                                                                 dsize=[96, 96])
             pred_label_list.append(pred_label)
             gt_label_list.append(gt_label)
             pred_clsprob_list.append(pred_clsprob)

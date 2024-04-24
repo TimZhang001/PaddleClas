@@ -236,22 +236,27 @@ class MobileNetV3_Mix(TheseusLayer):
         self.is_train = is_train
         self.normalize_in_model = export_model
         if self.normalize_in_model:
-            # BCHW 1x3x1x1
-            mean = [0, 0, 0]
-            std  = [1, 1, 1]
-            mean = paddle.to_tensor(mean)
-            std  = paddle.to_tensor(std)
-            mean = paddle.unsqueeze(mean, axis=1)
-            mean = paddle.unsqueeze(mean, axis=2)
-            mean = paddle.unsqueeze(mean, axis=0)
+            
+            if self.input_channel == 3:
+                # BCHW 1x3x1x1
+                mean = [0, 0, 0]
+                std  = [1, 1, 1]
+                mean = paddle.to_tensor(mean)
+                std  = paddle.to_tensor(std)
+                mean = paddle.unsqueeze(mean, axis=1)
+                mean = paddle.unsqueeze(mean, axis=2)
+                mean = paddle.unsqueeze(mean, axis=0)
 
-            std = paddle.unsqueeze(std, axis=1)
-            std = paddle.unsqueeze(std, axis=2)
-            std = paddle.unsqueeze(std, axis=0)
+                std = paddle.unsqueeze(std, axis=1)
+                std = paddle.unsqueeze(std, axis=2)
+                std = paddle.unsqueeze(std, axis=0)
+            else:
+                mean = 0.0
+                std  = 1.0
 
             self.mean = mean
             self.std  = std
-
+            
         super().init_res(
             stages_pattern,
             return_patterns=return_patterns,
