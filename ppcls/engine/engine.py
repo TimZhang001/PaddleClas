@@ -579,7 +579,7 @@ class Engine(object):
         )
 
     @paddle.no_grad()
-    def infer_tim(self, save_images = False, image_mode = "Eval", class_names = None):
+    def infer_tim(self, save_images = False, image_mode = "Eval", class_names = None, dsize=[96, 96]):
         self.model.eval()
         model_name  = self.config["Arch"]["name"]
         dataloader  = build_dataloader(self.config["DataLoader"], image_mode, self.device, self.use_dali)
@@ -599,7 +599,7 @@ class Engine(object):
                                                                  output_batch=output_batch,
                                                                  save_images=save_images, 
                                                                  save_folder=save_fold,
-                                                                 dsize=[96, 96])
+                                                                 dsize=dsize)
             pred_label_list.append(pred_label)
             gt_label_list.append(gt_label)
             pred_clsprob_list.append(pred_clsprob)

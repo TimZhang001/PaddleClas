@@ -53,6 +53,10 @@ class MVTecDatasetSingle(Dataset):
         # load dataset -------------------------------------------------------------
         self.x, self.class_id, self.is_segment, self.mask = self.load_dataset_folder()
 
+        # 打印数据集的数量，以及其中有分割标签的数量
+        print("num_samples, in", kind, len(self.x))
+        print("num_segment, in", kind, sum(self.is_segment))
+
         # 根据 class_id 确定一共有多少个类别，确定每个类别的数量和比例
         
         # 确定有多少个类别
@@ -120,7 +124,8 @@ class MVTecDatasetSingle(Dataset):
     def __getitem__(self, idx):
         xpath, class_id, is_segment, mask = self.x[idx], self.class_id[idx], self.is_segment[idx], self.mask[idx]
         
-        if(class_id == 0 or not os.path.isfile(mask)):
+        #if(class_id == 0 or not os.path.isfile(mask)):
+        if(not os.path.isfile(mask)):
             # good or json mask is not exist
             x,   mask   = self.sample_process_0(image=xpath)
             mask_weight = np.ones_like(mask)

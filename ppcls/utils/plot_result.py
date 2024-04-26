@@ -42,8 +42,8 @@ def save_cls_result(input_batch, output_batch, save_images=False, save_folder=No
             mult_channel = False
 
             # 把image_的三个通道分开，然后在水平方向hconcat
-            if(len(image_.shape)==3 and image_.shape[2] == 3):
-                mult_channel = True
+            #if(len(image_.shape)==3 and image_.shape[2] == 3):
+            #    mult_channel = True
 
             xpath_       = image_path[index] 
             xpath_       = os.path.splitext(os.path.basename(xpath_))[0]  
@@ -82,7 +82,7 @@ def plot_sample(image, gt_label, gt_mask,
     else:
         return
 
-    plt.figure()
+    plt.figure(figsize=(12, 4), dpi=50)
     plt.clf()
     
     # ---------------input image -----------------------

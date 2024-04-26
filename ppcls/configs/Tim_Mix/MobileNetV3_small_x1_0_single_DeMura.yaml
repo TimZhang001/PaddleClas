@@ -6,7 +6,7 @@ Global:
   checkpoints: null
   pretrained_model: null
   output_dir: ./output/
-  device: gpu:4                             #需要配置
+  device: gpu:5                             #需要配置
   save_interval: 50
   eval_during_train: True
   eval_interval: 1
