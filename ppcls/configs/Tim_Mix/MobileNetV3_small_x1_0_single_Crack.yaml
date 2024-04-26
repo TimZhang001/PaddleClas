@@ -1,12 +1,12 @@
-eval_channel: &eval_channel 1               #需要配置
-dataset_path: &dataset_path "/raid/zhangss/dataset/Classify/MixClassify/DeMura/mix_classify"  #需要配置
+eval_channel: &eval_channel 3               
+dataset_path: &dataset_path "D:/AIVIS_Workspace/Data/classify/Crack_Classify/Data"  
 
 # global configs
 Global:
   checkpoints: null
   pretrained_model: null
   output_dir: ./output/
-  device: gpu:4                             #需要配置
+  device: gpu:0                             
   save_interval: 50
   eval_during_train: True
   eval_interval: 1
@@ -15,14 +15,14 @@ Global:
   use_visualdl: True
 
   # used for static mode and model export
-  image_shape: [*eval_channel, 96, 96]      #需要配置
+  image_shape: [*eval_channel, 224, 224]      
   save_inference_dir: ./inference
   best_model: ./output/MobileNetV3_Mix_small_x1_0/best_model
 
 # model architecture
 Arch:
   name: MobileNetV3_Mix_small_x1_0
-  class_num: 2                              #需要配置
+  class_num: 3                              
   input_channel: *eval_channel
   pretrained: True
   use_ssld: True
@@ -46,7 +46,7 @@ Optimizer:
   momentum: 0.9
   lr:
     name: Cosine
-    learning_rate: 0.13
+    learning_rate: 0.13       
     warmup_epoch: 5
   regularizer:
     name: 'L2'
@@ -59,23 +59,23 @@ DataLoader:
       name: MVTecDatasetSingle
       dataset_path: *dataset_path
       kind: 'train'
-      size: 96                                                           #需要配置
-      random_crop: False
+      size: 224                                                           
+      random_crop: False                                                 
       interpolation: bicubic
-      aug_flip: True
-      aug_rotate90: True
-      aug_scaleRotate: False
-      aug_brightness_contrast: True
+      aug_flip: True                                                     
+      aug_rotate90: True                                                 
+      aug_scaleRotate: True                                             
+      aug_brightness_contrast: True                                      
       down_factor: 2
       input_channel: *eval_channel
 
     sampler:
       name: DistributedBatchSampler
-      batch_size: 256
+      batch_size: 64                                                    
       drop_last: False
       shuffle: True
     loader:
-      num_workers: 4
+      num_workers: 0
       use_shared_memory: True
 
   Eval:
@@ -83,7 +83,7 @@ DataLoader:
       name: MVTecDatasetSingle
       dataset_path: *dataset_path
       kind: 'val'
-      size: 96                                                                      #需要配置
+      size: 224                                                                      
       random_crop: False
       interpolation: bicubic
       aug_flip: True
@@ -95,16 +95,16 @@ DataLoader:
     
     sampler:
       name: DistributedBatchSampler
-      batch_size: 8
+      batch_size: 4                                                             
       drop_last: False
-      shuffle: False
+      shuffle: True
     loader:
-      num_workers: 4
+      num_workers: 0
       use_shared_memory: True
 
 
 Infer:
-  infer_imgs: /raid/zhangss/dataset/Classify/MixClassify/DeMura/mix_classify/val
+  infer_imgs: /home/zhangss/Tim.Zhang/001_Segment/MixSegClsNet/datasets/LED-3/2
   batch_size: 10
   transforms:
     - DecodeImage:
@@ -123,7 +123,7 @@ Infer:
 Metric:
   Train:
     - TopkAccTim:
-        topk: [1, 1]
+        topk: [1, 1]                                                        
   Eval:
     - TopkAccTim:
         topk: [1, 1]

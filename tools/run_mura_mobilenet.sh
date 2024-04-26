@@ -1,10 +1,10 @@
-job_name=MobileNetV3_large_x1_0 # 可修改，如 yolov7_tiny_300e_coco
-project_name=Tim
+job_name=MobileNetV3_small_x1_0_single_DeMura # 可修改，如 yolov7_tiny_300e_coco
+project_name=Tim_Mix
 config=ppcls/configs/${project_name}/${job_name}.yaml
 log_dir=log_dir/${job_name}
 
 # 1.训练（单卡/多卡），加 --eval 表示边训边评估，加 --amp 表示混合精度训练
-CUDA_VISIBLE_DEVICES=5 python tools/train.py -c ${config}
+#CUDA_VISIBLE_DEVICES=5 python tools/train.py -c ${config}
 
 # 2.评估，加 --classwise 表示输出每一类mAP
 #CUDA_VISIBLE_DEVICES=5 python tools/eval.py -c ${config} 
@@ -14,3 +14,6 @@ CUDA_VISIBLE_DEVICES=5 python tools/train.py -c ${config}
 
 # 4.导出模型
 #CUDA_VISIBLE_DEVICES=5 python tools/export_model.py -c ${config} 
+python tools/export_model.py -c ${config} 
+
+CUDA_VISIBLE_DEVICES=5 python deploy/python/predict_cls.py

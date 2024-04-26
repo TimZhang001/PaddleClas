@@ -1,0 +1,37 @@
+Global:
+  infer_imgs: "/raid/zhangss/dataset/Classify/MixClassify/DeMura/mix_classify/val/01_Blob/"
+  inference_model_dir: "./inference/MobileNetV3_Mix_small_x1_0"
+  batch_size: 1
+  use_gpu: True
+  gpu_id: 4
+  enable_mkldnn: False
+  cpu_num_threads: 10
+  enable_benchmark: False
+  use_fp16: False
+  ir_optim: True
+  use_tensorrt: False
+  gpu_mem: 8000
+  enable_profile: False
+  channel_num: &channel_num 1
+
+PreProcess:
+  transform_ops:
+    - ResizeImage:
+        resize_short: 96
+    - CropImage:
+        size: 96
+    - NormalizeImage:
+        scale: 1 #0.00392157
+        mean: 0
+        std: 1
+        order: ""
+        channel_num: *channel_num
+    - ToCHWImage:
+
+PostProcess:
+  main_indicator: Topk
+  Topk:
+    topk: 1
+    class_id_map_file: "/raid/zhangss/dataset/Classify/MixClassify/DeMura/mix_classify/label_list.txt"
+  SavePreLabel:
+    save_dir: ./inference//pre_label/

@@ -35,6 +35,8 @@ class Predictor(object):
         else:
             self.predictor, self.config = self.create_paddle_predictor(
                 args, inference_model_dir)
+            
+        self.gpu_id = args.get("gpu_id", 0)
 
     def predict(self, image):
         raise NotImplementedError
@@ -42,7 +44,8 @@ class Predictor(object):
     def create_paddle_predictor(self, args, inference_model_dir=None):
         if inference_model_dir is None:
             inference_model_dir = args.inference_model_dir
-        if "inference_int8.pdiparams" in os.listdir(inference_model_dir):
+        if "inference_int8.pdiparams" in os.listdir(inference_model_dir):       
+            print("Using INT8 model, path is {}".format(inference_model_dir))
             params_file = os.path.join(inference_model_dir,
                                        "inference_int8.pdiparams")
             model_file = os.path.join(inference_model_dir,
@@ -51,6 +54,7 @@ class Predictor(object):
                 "use_fp16", False
             ) is False, "fp16 mode is not supported for int8 model inference, please set use_fp16 as False during inference."
         else:
+            print("Using FP32 model, path is {}".format(inference_model_dir))
             params_file = os.path.join(inference_model_dir,
                                        "inference.pdiparams")
             model_file = os.path.join(inference_model_dir, "inference.pdmodel")
@@ -60,8 +64,9 @@ class Predictor(object):
 
         config = Config(model_file, params_file)
 
+        self.gpu_id = args.get("gpu_id", 0)
         if args.get("use_gpu", False):
-            config.enable_use_gpu(args.gpu_mem, 0)
+            config.enable_use_gpu(args.gpu_mem, self.gpu_id)
         elif args.get("use_npu", False):
             config.enable_custom_device('npu')
         elif args.get("use_xpu", False):

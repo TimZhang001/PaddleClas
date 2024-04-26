@@ -29,7 +29,7 @@ if __name__ == "__main__":
     engine = Engine(config, mode="infer")
 
     class_names = ["00_OK", "01_NG"]   # 需要配置类别名称
-    save_images = False
+    save_images = True
     for image_mode  in ["Eval", "Train"]: 
         print("\n---------------image_mode: ", image_mode)
         assert image_mode in ["Eval", "Train", "Test1", "Test2", "Test3"], "image_mode should be Eval or Test1 or Test2 or Train"

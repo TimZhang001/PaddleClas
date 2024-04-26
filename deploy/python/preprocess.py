@@ -29,7 +29,7 @@ import importlib
 from PIL import Image
 from paddle.vision.transforms import ToTensor, Normalize
 
-from paddleclas.deploy.python.det_preprocess import DetNormalizeImage, DetPadStride, DetPermute, DetResize
+from deploy.python.det_preprocess import DetNormalizeImage, DetPadStride, DetPermute, DetResize
 
 
 def create_operators(params):
@@ -76,7 +76,12 @@ class UnifiedResize(object):
         def _cv2_resize(src, size, resample):
             if isinstance(resample, tuple):
                 resample = random.choice(resample)
-            return cv2.resize(src, size, interpolation=resample)
+            
+            resize_img = cv2.resize(src, size, interpolation=resample)
+            assert len(resize_img.shape) == len(src.shape) or len(resize_img.shape) == len(src.shape) - 1, "The shape of the resized image is not compatible with the original image. Please check the input image and the output size."
+            if len(resize_img.shape) == len(src.shape) -1:
+                resize_img = np.expand_dims(resize_img, axis=-1)
+            return resize_img
 
         def _pil_resize(src, size, resample, return_numpy=True):
             if isinstance(resample, tuple):
@@ -313,7 +318,7 @@ class NormalizeImage(object):
         if isinstance(scale, str):
             scale = eval(scale)
         assert channel_num in [
-            3, 4
+            1, 3, 4
         ], "channel number of input image should be set to 3 or 4."
         self.channel_num = channel_num
         self.output_dtype = 'float16' if output_fp16 else 'float32'
@@ -322,9 +327,13 @@ class NormalizeImage(object):
         mean = mean if mean is not None else [0.485, 0.456, 0.406]
         std = std if std is not None else [0.229, 0.224, 0.225]
 
-        shape = (3, 1, 1) if self.order == 'chw' else (1, 1, 3)
-        self.mean = np.array(mean).reshape(shape).astype('float32')
-        self.std = np.array(std).reshape(shape).astype('float32')
+        if channel_num != 1:
+            shape = (3, 1, 1) if self.order == 'chw' else (1, 1, 3)
+            self.mean = np.array(mean).reshape(shape).astype('float32')
+            self.std = np.array(std).reshape(shape).astype('float32')
+        else:
+            self.mean = np.array(mean).reshape(1, 1, 1).astype('float32')
+            self.std = np.array(std).reshape(1, 1, 1).astype('float32')
 
     def __call__(self, img):
         from PIL import Image

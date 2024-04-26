@@ -13,15 +13,18 @@
 # limitations under the License.
 
 import os
+import sys
 
 import cv2
 import numpy as np
 
-from paddleclas.deploy.utils import logger, config
-from paddleclas.deploy.utils.predictor import Predictor
-from paddleclas.deploy.utils.get_image_list import get_image_list
-from paddleclas.deploy.python.preprocess import create_operators
-from paddleclas.deploy.python.postprocess import build_postprocess
+sys.path.append("/home/zhangss/PaddleKits/PaddleClas")
+
+from deploy.utils import logger, config
+from deploy.utils.predictor import Predictor
+from deploy.utils.get_image_list import get_image_list
+from deploy.python.preprocess import create_operators
+from deploy.python.postprocess import build_postprocess
 
 
 class ClsPredictor(Predictor):
@@ -110,13 +113,25 @@ class ClsPredictor(Predictor):
 
 def main(config):
     cls_predictor = ClsPredictor(config)
-    image_list = get_image_list(config["Global"]["infer_imgs"])
+    image_list    = get_image_list(config["Global"]["infer_imgs"])
 
     batch_imgs = []
     batch_names = []
     cnt = 0
+    # 判断'channel_num'是否在config中的某个配置下
+    if "channel_num" in config["Global"]:
+        channel_num = config["Global"]["channel_num"]
+    else:
+        channel_num = 3
+
     for idx, img_path in enumerate(image_list):
-        img = cv2.imread(img_path)
+        if channel_num == 1:
+            img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+            # 将[100, 100] - > [100, 100, 1]
+            img = np.expand_dims(img, axis=-1)
+        else:
+            cv2.imread(img_path, cv2.IMREAD_COLOR)
+        
         if img is None:
             logger.warning(
                 "Image file failed to read and has been skipped. The path: {}".
@@ -125,29 +140,23 @@ def main(config):
             img = img[:, :, ::-1]
             batch_imgs.append(img)
             img_name = os.path.basename(img_path)
-            batch_names.append(img_name)
+            batch_names.append(img_path)
             cnt += 1
 
-        if cnt % config["Global"]["batch_size"] == 0 or (idx + 1
-                                                         ) == len(image_list):
+        if cnt % config["Global"]["batch_size"] == 0 or (idx + 1) == len(image_list):
             if len(batch_imgs) == 0:
                 continue
             batch_results = cls_predictor.predict(batch_imgs)
             for number, result_dict in enumerate(batch_results):
-                if "PersonAttribute" in config[
-                        "PostProcess"] or "VehicleAttribute" in config[
-                            "PostProcess"]:
+                if "PersonAttribute" in config["PostProcess"] or "VehicleAttribute" in config["PostProcess"]:
                     filename = batch_names[number]
                     print("{}:\t {}".format(filename, result_dict))
                 else:
-                    filename = batch_names[number]
-                    clas_ids = result_dict["class_ids"]
-                    scores_str = "[{}]".format(", ".join("{:.2f}".format(
-                        r) for r in result_dict["scores"]))
+                    filename    = batch_names[number]
+                    clas_ids    = result_dict["class_ids"]
+                    scores_str  = "[{}]".format(", ".join("{:.3f}".format(r) for r in result_dict["scores"]))
                     label_names = result_dict["label_names"]
-                    print(
-                        "{}:\tclass id(s): {}, score(s): {}, label_name(s): {}".
-                        format(filename, clas_ids, scores_str, label_names))
+                    print("class_id: {}, score: {}, label_name: {}, filename:{}".format(clas_ids, scores_str, label_names, filename))
             batch_imgs = []
             batch_names = []
     if cls_predictor.benchmark:

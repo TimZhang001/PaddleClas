@@ -28,14 +28,14 @@ from tqdm import tqdm
 from prettytable import PrettyTable
 import paddle
 
-from .ppcls.arch import backbone
-from .ppcls.utils import logger
+from ppcls.arch import backbone
+from ppcls.utils import logger
 
-from .deploy.python.predict_cls import ClsPredictor
-from .deploy.python.predict_system import SystemPredictor
-from .deploy.python.build_gallery import GalleryBuilder
-from .deploy.utils.get_image_list import get_image_list
-from .deploy.utils import config
+from deploy.python.predict_cls import ClsPredictor
+from deploy.python.predict_system import SystemPredictor
+from deploy.python.build_gallery import GalleryBuilder
+from deploy.utils.get_image_list import get_image_list
+from deploy.utils import config
 
 # for the PaddleClas Project
 from . import deploy

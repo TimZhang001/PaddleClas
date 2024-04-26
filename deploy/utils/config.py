@@ -176,7 +176,7 @@ def parser():
         '-c',
         '--config',
         type=str,
-        default='configs/config.yaml',
+        default='deploy/configs/Tim_Mix/inference_cls.yaml',
         help='config file path')
     parser.add_argument(
         '-o',

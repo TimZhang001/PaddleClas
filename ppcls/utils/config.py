@@ -195,6 +195,7 @@ def parse_args():
         '-c',
         '--config',
         type=str,
+        #default='/home/zhangss/PaddleKits/PaddleClas/ppcls/configs/Tim_Mix/MobileNetV3_small_x1_0_single_Crack.yaml',
         default='/home/zhangss/PaddleKits/PaddleClas/ppcls/configs/Tim_Mix/MobileNetV3_small_x1_0_single_DeMura.yaml', 
         #default='/home/zhangss/PaddleKits/PaddleClas/ppcls/configs/Tim_Mix/MobileNetV3_small_x1_0.yaml',
         help='config file path')
