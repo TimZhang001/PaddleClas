@@ -20,7 +20,7 @@ PreProcess:
         resize_short: 96
     - CropImage:
         size: 96
-    - NormalizeImage:
+    - NormalizeImage:   # 已经将归一化的工作放在模型内部了，所以这里不再需要进行归一化了
         scale: 1 #0.00392157
         mean: 0
         std: 1
