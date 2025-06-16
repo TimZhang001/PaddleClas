@@ -74,11 +74,11 @@ def generate_train_val_list(root_path, label_file, train_list, val_list, val_rat
                     f1.write(os.path.join(dir_path, image) + ' ' + label_dict[dir] + '\n')
 
 if __name__ == '__main__':
-    root_path  = '/raid/zhangss/dataset/Classify/MuraAD/'
+    root_path  = '/mnt/nas/grp_IMRECOG/DMS_DATA/11_closeeye/train_test/'
     label_file = 'label_list.txt'
     train_list = 'train_list.txt'
     val_list   = 'val_list.txt'
     
     generate_label_file(root_path, label_file)
-    generate_train_val_list(root_path, label_file, train_list, val_list, val_rate=0.15)
+    generate_train_val_list(root_path, label_file, train_list, val_list, val_rate=0.25)
     print('Finish!')

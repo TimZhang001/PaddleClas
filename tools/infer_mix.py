@@ -22,7 +22,7 @@ sys.path.append(os.path.abspath(os.path.join(__dir__, '../')))
 
 from ppcls.utils import config
 from ppcls.engine.engine import Engine
-from ppcls.data.dataloader.mvtec_single import CLASS_NAMES
+from ppcls.data.dataloader.mvtec_close import CLASS_NAMES
 
 if __name__ == "__main__":
     args   = config.parse_args()
@@ -31,8 +31,8 @@ if __name__ == "__main__":
 
     class_names = CLASS_NAMES   
     save_images = True
-    dsize       = [96, 96] 
-    for image_mode  in ["Eval", "Train"]: 
+    dsize       = [256, 128] 
+    for image_mode  in ["Eval", "Test","Train"]: 
         print("\n---------------image_mode: ", image_mode)
-        assert image_mode in ["Eval", "Train", "Test1", "Test2", "Test3"], "image_mode should be Eval or Test1 or Test2 or Train"
+        #assert image_mode in ["Eval", "Train", "Test1", "Test2", "Test3"], "image_mode should be Eval or Test1 or Test2 or Train"
         engine.infer_tim(save_images=save_images, image_mode=image_mode, class_names=class_names, dsize=dsize)

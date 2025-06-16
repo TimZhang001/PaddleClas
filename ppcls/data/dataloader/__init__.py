@@ -14,3 +14,4 @@ from ppcls.data.dataloader.face_dataset import AdaFaceDataset, FiveValidationDat
 from ppcls.data.dataloader.mvtec2 import MVTecDataset2
 from ppcls.data.dataloader.mvtec_single import MVTecDatasetSingle
 from ppcls.data.dataloader.mvtec  import MVTecDataset
+from ppcls.data.dataloader.mvtec_close import MVTecDatasetClose

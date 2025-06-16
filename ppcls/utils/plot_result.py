@@ -74,7 +74,7 @@ def plot_sample(image, gt_label, gt_mask,
             else:
                 return
         else:
-            if cls_prob < 0.5 and 1:
+            if cls_prob < 0.75 and 1:
                 cur_save_dir = f"{save_dir}/right"
                 os.makedirs(cur_save_dir, exist_ok=True) 
             else:
@@ -94,27 +94,31 @@ def plot_sample(image, gt_label, gt_mask,
             plt.title('Input', fontsize=6)
             plt.imshow(image[:,:,i], cmap="gray")
     else:
-        total_num = 3 + 1
+        total_num = 1 + 1
         plt.subplot(1, total_num, 1)
         plt.xticks([]), plt.yticks([])
         plt.title('Input', fontsize=6)
         plt.imshow(image, cmap="gray")
 
     # ---------------GtMask -----------------------
+    '''
     plt.subplot(1, total_num, total_num-2)
     plt.xticks([]), plt.yticks([])
     plt.title('GT-Mask', fontsize=6)
     plt.imshow(gt_mask, cmap="gray")
+    '''
 
-    plt.subplot(1, total_num, total_num-1)
+    plt.subplot(1, total_num, total_num)
     plt.xticks([]), plt.yticks([])
     plt.title(f"seg_prob: {seg_prob.max():.4f}", fontsize=6)
     plt.imshow(seg_prob, cmap="jet")
 
+    '''
     plt.subplot(1, total_num, total_num)
     plt.xticks([]), plt.yticks([])
     plt.title('seg_rst', fontsize=6)
     plt.imshow((pred_seg * 255).astype(np.uint8), cmap="gray")
+    '''
         
     out_prefix  = 'pred_{:02d}_'.format(pred_label) if pred_label is not None else out_prefix
     out_prefix  = out_prefix + '{:.3f}_'.format(cls_prob) if cls_prob is not None else ''

@@ -53,7 +53,11 @@ def gen_empty_json_label(image_path):
     }
 
     # 构造json文件路径
-    json_path = image_path.replace('.bmp', '.json').replace('.tif', '.json')
+    json_path = image_path.replace('.bmp', '.json').replace('.tif', '.json').replace('.png', '.json')
+    if not json_path.endswith('.json'):
+        raise ValueError("Invalid image path.")
+
+    # 保存json文件
     json_str  = json.dumps(json_data, indent=4, separators=(',', ': '))
     with open(json_path, 'w', encoding='utf-8') as json_file:
         json_file.write(json_str)
@@ -85,8 +89,8 @@ def get_all_files_with_suffix(path, suffix_list=['.bmp']):
 
 # main函数
 if __name__ == '__main__':
-    root_paths  = "C:/Users/Administrator/Desktop/00_OK"  
-    image_paths = get_all_files_with_suffix(root_paths, ['.tif', '.bmp'])
+    root_paths  = "/mnt/nas/grp_IMRECOG/DMS_DATA/11_closeeye/20231026_vp_train/close"  
+    image_paths = get_all_files_with_suffix(root_paths, ['.tif', '.bmp', '.png', '.jpg'])
 
     for image_path in image_paths:
         gen_empty_json_label(image_path)

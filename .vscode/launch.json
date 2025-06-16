@@ -6,11 +6,12 @@
     "configurations": [
         {
             "name": "Python: 当前文件",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "justMyCode": true
+            "justMyCode": true,
+            "python": "/data/miniforge3/envs/paddle_env/bin/python"
         }
     ]
 }
